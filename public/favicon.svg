@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="watashi-favicon-gradient" x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#176851" />
+      <stop offset="1" stop-color="#4B41E1" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="20" fill="#F6F8FB" />
+  <circle cx="32" cy="32" r="22" fill="url(#watashi-favicon-gradient)" opacity="0.14" />
+  <path d="M18 22H24L32 37L40 22H46V42H41V30.5L35 41H29L23 30.5V42H18V22Z" fill="#141C2F" />
+</svg>

@@ -1,0 +1,231 @@
+- generic [ref=e2]:
+  - complementary:
+    - generic:
+      - link "Watashi Learn":
+        - /url: /
+        - img
+      - generic:
+        - button "Learning Paths":
+          - generic:
+            - img
+        - button "Certificates":
+          - generic:
+            - img
+      - generic:
+        - button "News":
+          - generic:
+            - img
+        - button "Community":
+          - generic:
+            - img
+      - generic:
+        - link "Sign In":
+          - /url: /login
+          - generic:
+            - img
+        - link "Get Started":
+          - /url: /register
+          - generic:
+            - img
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link "Watashi" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img [ref=e8]
+        - generic [ref=e12]: Watashi
+      - generic [ref=e14]:
+        - button "Catalog" [ref=e15]
+        - button "Certificates" [ref=e16]
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - button "News" [ref=e19]
+          - button "Community" [ref=e20]
+        - link "Sign In" [ref=e21] [cursor=pointer]:
+          - /url: /login
+          - img [ref=e23]
+          - text: Sign In
+        - link "Get Started" [ref=e26] [cursor=pointer]:
+          - /url: /register
+          - img [ref=e28]
+          - text: Get Started
+  - main [ref=e30]:
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - generic [ref=e36]: The Digital Curator Experience
+        - heading "Watashi Learn. Zero to Hero." [level=1] [ref=e38]:
+          - text: Watashi
+          - text: Learn.
+          - text: Zero to Hero.
+        - paragraph [ref=e39]: Experience an editorial-grade learning journey where curriculum meets high-end curation. Transform from a curious observer to an industry hero.
+        - link "Start your path, e.g. Senior UI Designer" [ref=e40] [cursor=pointer]:
+          - /url: /register
+          - generic [ref=e41]: Start your path, e.g. Senior UI Designer
+          - img [ref=e43]
+      - generic [ref=e46]:
+        - generic [ref=e53]:
+          - generic [ref=e54]: 0 to 100X
+          - generic [ref=e55]: Curated Paths
+        - img [ref=e56]
+        - generic [ref=e58]:
+          - img [ref=e61]
+          - generic [ref=e63]: PHASE ZERO
+        - generic [ref=e64]:
+          - img [ref=e67]
+          - generic [ref=e69]: THE DEEP DIVE
+        - generic [ref=e70]:
+          - img [ref=e73]
+          - generic [ref=e76]: THE HERO
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - paragraph [ref=e81]: Curated Paths
+          - heading "Your Learning Paths" [level=2] [ref=e82]
+          - paragraph [ref=e83]: Curated sequences for rapid expertise acquisition with guided modules, proof-driven milestones, and mentor-calibrated pacing.
+        - link "Browse Catalog" [ref=e84] [cursor=pointer]:
+          - /url: /login
+          - text: Browse Catalog
+          - img [ref=e85]
+      - generic [ref=e87]:
+        - article [ref=e88]:
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: New Series
+              - heading "Mastering Fluid Visual Architectures" [level=3] [ref=e93]
+              - paragraph [ref=e94]: Deep dive into organic UI systems and spatial hierarchy with a guided editorial sprint.
+            - generic [ref=e95]:
+              - generic [ref=e96]:
+                - generic [ref=e97]:
+                  - img "Learner avatar" [ref=e98]
+                  - img "Mentor avatar" [ref=e99]
+                - generic [ref=e100]: +12k learners
+              - img [ref=e102]
+        - article [ref=e104]:
+          - generic [ref=e105]:
+            - img [ref=e107]
+            - generic [ref=e110]:
+              - heading "Advanced Kinetic Motion" [level=3] [ref=e111]
+              - paragraph [ref=e112]: Bring life to static frames with motion systems that still feel precise.
+        - article [ref=e113]:
+          - generic [ref=e114]:
+            - img [ref=e116]
+            - generic [ref=e124]:
+              - heading "Cognitive Load Theory" [level=3] [ref=e125]
+              - paragraph [ref=e126]: Design with the way real learners absorb and retain information.
+        - article [ref=e127]:
+          - generic [ref=e128]:
+            - img "Abstract curriculum growth chart" [ref=e130]
+            - generic [ref=e131]:
+              - generic [ref=e132]:
+                - heading "Curriculum Monetization" [level=3] [ref=e133]
+                - paragraph [ref=e134]: Turn your expertise into a sustainable global revenue engine without losing craft.
+              - button "Start Module" [ref=e135]:
+                - text: Start Module
+                - img [ref=e136]
+    - generic [ref=e139]:
+      - generic [ref=e140]:
+        - paragraph [ref=e141]: Built for Fluidity
+        - heading "Built for Fluidity." [level=2] [ref=e142]
+        - generic [ref=e143]:
+          - generic [ref=e144]:
+            - img [ref=e146]
+            - generic [ref=e148]:
+              - heading "Adaptive Interfaces" [level=3] [ref=e149]
+              - paragraph [ref=e150]: The engine adjusts to your pace, focus, and retention in real time instead of forcing one path.
+          - generic [ref=e151]:
+            - img [ref=e153]
+            - generic [ref=e158]:
+              - heading "Universal Sync" [level=3] [ref=e159]
+              - paragraph [ref=e160]: Progress, notes, and node maps stay consistent across every device you move between.
+          - generic [ref=e161]:
+            - img [ref=e163]
+            - generic [ref=e166]:
+              - heading "AI Curation" [level=3] [ref=e167]
+              - paragraph [ref=e168]: Suggested next steps are tuned to mastery, not content volume, so momentum stays intact.
+        - button "Experience the Engine" [ref=e169]:
+          - text: Experience the Engine
+          - img [ref=e170]
+      - generic [ref=e175]:
+        - generic [ref=e181]: Active Processing
+        - generic [ref=e182]: Learning Engine
+        - generic [ref=e185]: Fluid
+    - generic [ref=e187]:
+      - generic [ref=e188]:
+        - article [ref=e189]:
+          - img [ref=e190]
+          - paragraph [ref=e193]: "\"Watashi isn't just a platform; it's a curator of my professional potential. The fluid architecture helped me transition from a junior designer to a lead in months.\""
+          - generic [ref=e194]:
+            - img "Portrait of Alex Rivera" [ref=e195]
+            - generic [ref=e196]:
+              - generic [ref=e197]: Alex Rivera
+              - generic [ref=e198]: Lead UI Architect at Vanta
+        - article [ref=e199]:
+          - img [ref=e200]
+          - paragraph [ref=e203]: "\"The node-based journey maps allowed my team to visualize their learning debt and clear it faster than any traditional course I've seen in academia.\""
+          - generic [ref=e204]:
+            - img "Portrait of Dr. Sarah Chen" [ref=e205]
+            - generic [ref=e206]:
+              - generic [ref=e207]: Dr. Sarah Chen
+              - generic [ref=e208]: Head of Learning, NexaLabs
+      - generic [ref=e209]:
+        - generic [ref=e210]:
+          - generic [ref=e211]: 98%
+          - generic [ref=e212]: Success Rate
+        - generic [ref=e213]:
+          - generic [ref=e214]: 12M+
+          - generic [ref=e215]: Nodes Created
+        - generic [ref=e216]:
+          - generic [ref=e217]: "142"
+          - generic [ref=e218]: Countries
+        - generic [ref=e219]:
+          - generic [ref=e220]: 24/7
+          - generic [ref=e221]: Global Support
+    - generic [ref=e223]:
+      - heading "Latest from the Newsroom" [level=2] [ref=e225]
+      - generic [ref=e227]:
+        - article [ref=e228]:
+          - img "Abstract pattern for newsroom story" [ref=e229]
+          - generic [ref=e230]:
+            - generic [ref=e231]: Thought Leadership
+            - heading "The 2024 Kinetic Design Manifesto" [level=3] [ref=e232]
+            - paragraph [ref=e233]: Defining the future of interaction paradigms through asymmetry, rhythm, and motion.
+        - article [ref=e234]:
+          - generic [ref=e235]:
+            - generic [ref=e236]: V3.0
+            - generic [ref=e237]:
+              - heading "Engine Release" [level=3] [ref=e238]
+              - paragraph [ref=e239]: A complete rebuild focused on neural learning sync and clearer route intelligence.
+        - article [ref=e240]:
+          - generic [ref=e241]:
+            - generic [ref=e242]:
+              - img [ref=e244]
+              - generic [ref=e246]: Podcast
+            - generic [ref=e247]:
+              - heading "The Curator Podcast" [level=3] [ref=e248]
+              - paragraph [ref=e249]: "Ep. 42: Why asymmetry feels more human than precision grids."
+        - article [ref=e250]:
+          - generic [ref=e251]:
+            - generic [ref=e252]:
+              - generic [ref=e253]: Event
+              - heading "Summer Workshop" [level=3] [ref=e254]
+              - paragraph [ref=e255]: Join 500 curators in Tokyo this July for live labs, critiques, and portfolio reviews.
+            - img [ref=e257]
+    - generic [ref=e260]:
+      - generic [ref=e261]:
+        - link "Watashi Learn" [ref=e262] [cursor=pointer]:
+          - /url: /
+          - img [ref=e264]
+          - generic [ref=e269]: Watashi Learn
+        - paragraph [ref=e270]: Precision in learning, designed for focused progress from your first lesson to portfolio-ready proof.
+      - generic [ref=e271]:
+        - link "Privacy Policy" [ref=e272] [cursor=pointer]:
+          - /url: /
+        - link "Terms of Service" [ref=e273] [cursor=pointer]:
+          - /url: /
+        - link "Cookie Settings" [ref=e274] [cursor=pointer]:
+          - /url: /
+        - link "Contact Support" [ref=e275] [cursor=pointer]:
+          - /url: /
+      - link "Get Started" [ref=e276] [cursor=pointer]:
+        - /url: /register
+        - text: Get Started
+        - img [ref=e277]

@@ -1,0 +1,38 @@
+export type {
+  ActionResult,
+  CommunityModerationRequest,
+  CommunityModerationResult,
+  CourseOutlineRequest,
+  CourseOutlineResult,
+  JobCreateSuccess as JobCreateResponse,
+  JobRecord,
+  JobStatus,
+  JobType,
+  NotificationTestRequest,
+  NotificationTestResult,
+  StudyPathRequest,
+  StudyPathResult,
+} from '../../shared/contracts/jobs'
+
+export type { AuthPayload as WatashiAuthPayload } from '../../shared/contracts/auth'
+export type {
+  AudioToolSettings as VideoAudioToolSettings,
+  CompleteVideoUploadInput,
+  CompleteVideoUploadResult,
+  CreateVideoProjectInput,
+  CreateVideoUploadSessionInput,
+  CreateVideoUploadSessionResult,
+  ExportSettings as VideoExportSettings,
+  ProcessingJob as VideoProcessingJob,
+  QueueVideoJobResult,
+  RecordingSessionInput,
+  RecordingSessionRecord,
+  SaveVideoProjectInput,
+  StampOverlay as VideoStampOverlay,
+  SubtitleCue as VideoSubtitleCue,
+  UploadedVideoAsset,
+  VideoProjectSnapshot,
+  VideoSegment,
+  VideoStudioBootstrap,
+  VideoUploadPolicy,
+} from '../../shared/contracts/video-studio'
