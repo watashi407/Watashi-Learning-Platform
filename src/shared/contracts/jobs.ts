@@ -9,6 +9,8 @@ export type JobType =
   | 'video-waveform'
   | 'video-subtitles'
   | 'video-render'
+  | 'certificate-generate'
+  | 'certificate-reissue'
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed'
 
 export type JobRecord<TPayload = unknown, TResult = unknown> = {

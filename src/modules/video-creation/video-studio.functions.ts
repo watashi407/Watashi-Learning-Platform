@@ -5,8 +5,10 @@ import { AppError } from '../../shared/errors'
 import type {
   CompleteVideoUploadResult,
   CreateVideoUploadSessionResult,
+  DuplicateVideoProjectInput,
   QueueVideoJobResult,
   RecordingSessionRecord,
+  VideoProjectListItem,
   VideoProjectSnapshot,
   VideoStudioBootstrap,
 } from '../../shared/contracts/video-studio'
@@ -16,6 +18,9 @@ import {
   createRecordingSession,
   createVideoProject,
   createVideoUploadSession,
+  deleteVideoProject,
+  duplicateVideoProject,
+  listVideoProjects,
   saveVideoProject,
   queueRenderJob,
   queueSubtitleJob,
@@ -24,6 +29,8 @@ import {
   completeVideoUploadSchema,
   createVideoProjectSchema,
   createVideoUploadSessionSchema,
+  deleteVideoProjectSchema,
+  duplicateVideoProjectSchema,
   queueVideoJobSchema,
   recordingSessionSchema,
   saveVideoProjectSchema,
@@ -62,6 +69,34 @@ export const saveVideoProjectFn = createServerFn({ method: 'POST' })
     return runAction<VideoProjectSnapshot>(requestId, async () => {
       const user = requireContextUser(context as Partial<AppRequestContext>, requestId)
       return await saveVideoProject(user, data, requestId)
+    })
+  })
+
+export const listVideoProjectsFn = createServerFn({ method: 'GET' }).handler(async ({ context }) => {
+  const requestId = (context as Partial<AppRequestContext>).requestId ?? 'unknown-request'
+  return runAction<VideoProjectListItem[]>(requestId, async () => {
+    const user = requireContextUser(context as Partial<AppRequestContext>, requestId)
+    return await listVideoProjects(user, requestId)
+  })
+})
+
+export const duplicateVideoProjectFn = createServerFn({ method: 'POST' })
+  .inputValidator(duplicateVideoProjectSchema)
+  .handler(async ({ data, context }) => {
+    const requestId = (context as Partial<AppRequestContext>).requestId ?? 'unknown-request'
+    return runAction<VideoProjectSnapshot>(requestId, async () => {
+      const user = requireContextUser(context as Partial<AppRequestContext>, requestId)
+      return await duplicateVideoProject(user, data as DuplicateVideoProjectInput, requestId)
+    })
+  })
+
+export const deleteVideoProjectFn = createServerFn({ method: 'POST' })
+  .inputValidator(deleteVideoProjectSchema)
+  .handler(async ({ data, context }) => {
+    const requestId = (context as Partial<AppRequestContext>).requestId ?? 'unknown-request'
+    return runAction<{ deleted: true }>(requestId, async () => {
+      const user = requireContextUser(context as Partial<AppRequestContext>, requestId)
+      return await deleteVideoProject(user, data.projectId, requestId)
     })
   })
 

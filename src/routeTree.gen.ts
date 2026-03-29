@@ -33,6 +33,7 @@ import { Route as AuthCreationLabCourseBuilderRouteImport } from './routes/_auth
 import { Route as AuthCreationLabCertificateBuilderRouteImport } from './routes/_auth.creation-lab.certificate-builder'
 import { Route as AuthCreationLabAudioRouteImport } from './routes/_auth.creation-lab.audio'
 import { Route as ApiVideoStudioUploadsResumableRouteImport } from './routes/api/video-studio/uploads/resumable'
+import { Route as ApiCertificatesVerifyCodeRouteImport } from './routes/api/certificates/verify.$code'
 import { Route as ApiVideoStudioUploadsResumableUploadIdRouteImport } from './routes/api/video-studio/uploads/resumable.$uploadId'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -158,6 +159,12 @@ const ApiVideoStudioUploadsResumableRoute =
     path: '/api/video-studio/uploads/resumable',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiCertificatesVerifyCodeRoute =
+  ApiCertificatesVerifyCodeRouteImport.update({
+    id: '/api/certificates/verify/$code',
+    path: '/api/certificates/verify/$code',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiVideoStudioUploadsResumableUploadIdRoute =
   ApiVideoStudioUploadsResumableUploadIdRouteImport.update({
     id: '/$uploadId',
@@ -188,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/api/jobs/course-outline': typeof ApiJobsCourseOutlineRoute
   '/api/jobs/study-path': typeof ApiJobsStudyPathRoute
   '/api/notifications/test': typeof ApiNotificationsTestRoute
+  '/api/certificates/verify/$code': typeof ApiCertificatesVerifyCodeRoute
   '/api/video-studio/uploads/resumable': typeof ApiVideoStudioUploadsResumableRouteWithChildren
   '/api/video-studio/uploads/resumable/$uploadId': typeof ApiVideoStudioUploadsResumableUploadIdRoute
 }
@@ -214,6 +222,7 @@ export interface FileRoutesByTo {
   '/api/jobs/course-outline': typeof ApiJobsCourseOutlineRoute
   '/api/jobs/study-path': typeof ApiJobsStudyPathRoute
   '/api/notifications/test': typeof ApiNotificationsTestRoute
+  '/api/certificates/verify/$code': typeof ApiCertificatesVerifyCodeRoute
   '/api/video-studio/uploads/resumable': typeof ApiVideoStudioUploadsResumableRouteWithChildren
   '/api/video-studio/uploads/resumable/$uploadId': typeof ApiVideoStudioUploadsResumableUploadIdRoute
 }
@@ -242,6 +251,7 @@ export interface FileRoutesById {
   '/api/jobs/course-outline': typeof ApiJobsCourseOutlineRoute
   '/api/jobs/study-path': typeof ApiJobsStudyPathRoute
   '/api/notifications/test': typeof ApiNotificationsTestRoute
+  '/api/certificates/verify/$code': typeof ApiCertificatesVerifyCodeRoute
   '/api/video-studio/uploads/resumable': typeof ApiVideoStudioUploadsResumableRouteWithChildren
   '/api/video-studio/uploads/resumable/$uploadId': typeof ApiVideoStudioUploadsResumableUploadIdRoute
 }
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/api/jobs/course-outline'
     | '/api/jobs/study-path'
     | '/api/notifications/test'
+    | '/api/certificates/verify/$code'
     | '/api/video-studio/uploads/resumable'
     | '/api/video-studio/uploads/resumable/$uploadId'
   fileRoutesByTo: FileRoutesByTo
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/api/jobs/course-outline'
     | '/api/jobs/study-path'
     | '/api/notifications/test'
+    | '/api/certificates/verify/$code'
     | '/api/video-studio/uploads/resumable'
     | '/api/video-studio/uploads/resumable/$uploadId'
   id:
@@ -323,6 +335,7 @@ export interface FileRouteTypes {
     | '/api/jobs/course-outline'
     | '/api/jobs/study-path'
     | '/api/notifications/test'
+    | '/api/certificates/verify/$code'
     | '/api/video-studio/uploads/resumable'
     | '/api/video-studio/uploads/resumable/$uploadId'
   fileRoutesById: FileRoutesById
@@ -338,6 +351,7 @@ export interface RootRouteChildren {
   ApiJobsCourseOutlineRoute: typeof ApiJobsCourseOutlineRoute
   ApiJobsStudyPathRoute: typeof ApiJobsStudyPathRoute
   ApiNotificationsTestRoute: typeof ApiNotificationsTestRoute
+  ApiCertificatesVerifyCodeRoute: typeof ApiCertificatesVerifyCodeRoute
   ApiVideoStudioUploadsResumableRoute: typeof ApiVideoStudioUploadsResumableRouteWithChildren
 }
 
@@ -511,6 +525,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVideoStudioUploadsResumableRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/certificates/verify/$code': {
+      id: '/api/certificates/verify/$code'
+      path: '/api/certificates/verify/$code'
+      fullPath: '/api/certificates/verify/$code'
+      preLoaderRoute: typeof ApiCertificatesVerifyCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/video-studio/uploads/resumable/$uploadId': {
       id: '/api/video-studio/uploads/resumable/$uploadId'
       path: '/$uploadId'
@@ -592,6 +613,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiJobsCourseOutlineRoute: ApiJobsCourseOutlineRoute,
   ApiJobsStudyPathRoute: ApiJobsStudyPathRoute,
   ApiNotificationsTestRoute: ApiNotificationsTestRoute,
+  ApiCertificatesVerifyCodeRoute: ApiCertificatesVerifyCodeRoute,
   ApiVideoStudioUploadsResumableRoute:
     ApiVideoStudioUploadsResumableRouteWithChildren,
 }

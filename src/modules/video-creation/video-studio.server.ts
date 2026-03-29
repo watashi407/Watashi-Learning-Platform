@@ -15,6 +15,7 @@ import type {
   CreateVideoProjectInput,
   CreateVideoUploadSessionInput,
   CreateVideoUploadSessionResult,
+  DuplicateVideoProjectInput,
   JobRecord,
   LessonBindingOption,
   ProcessingJob,
@@ -24,6 +25,7 @@ import type {
   SaveVideoProjectInput,
   SubtitleCue,
   UploadedVideoAsset,
+  VideoProjectListItem,
   VideoProjectSnapshot,
   VideoStudioBootstrap,
   VideoUploadPolicy,
@@ -34,14 +36,18 @@ import {
   createDefaultAudioSettings,
   createDefaultBinding,
   createDefaultExportSettings,
+  createDefaultImageOverlays,
   createDefaultProjectSnapshot,
   createDefaultSegments,
   createDefaultStamps,
   createDefaultSubtitleCues,
+  createDefaultTextOverlays,
+  createDefaultVideoEffects,
   createFallbackBindingOptions,
   createVideoUploadPolicy,
   getConfiguredMaxFileSizeMb,
 } from './defaults'
+import { appendActivityLog, registerMediaItem } from '../../features/educator/educator-infra.server'
 
 type ProjectRow = {
   id: string
@@ -49,6 +55,8 @@ type ProjectRow = {
   title: string
   binding_type: 'lesson' | 'course'
   binding_target_id: string | null
+  status: 'draft' | 'published' | 'archived'
+  export_status: 'idle' | 'queued' | 'processing' | 'completed' | 'failed'
   created_at: string
   updated_at: string
 }
@@ -145,6 +153,9 @@ const videoStudioTableNames = [
   'subtitle_tracks',
   'subtitle_cues',
   'overlays',
+  'video_text_overlays',
+  'video_image_overlays',
+  'video_effect_settings',
   'video_recording_sessions',
 ]
 
@@ -249,6 +260,9 @@ function saveFallbackProject(userId: string, bindingOptions: LessonBindingOption
     subtitleCues: input.subtitleCues,
     stampOverlays: input.stampOverlays,
     exportSettings: input.exportSettings,
+    textOverlays: input.textOverlays,
+    imageOverlays: input.imageOverlays,
+    videoEffects: input.videoEffects,
     updatedAt: new Date().toISOString(),
   }
   fallbackProjects.set(userId, nextProject)
@@ -311,6 +325,19 @@ function parseDurationFromFfmpeg(output: string) {
   }
 
   return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
+}
+
+function formatDurationLabel(durationSeconds: number) {
+  const totalSeconds = Math.max(0, Math.round(durationSeconds))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}h ${String(minutes).padStart(2, '0')}m`
+  }
+
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`
 }
 
 async function runFfmpeg(args: string[], allowFailure = false) {
@@ -582,7 +609,7 @@ async function createProjectRecord(user: AuthSession, bindingOptions: LessonBind
         binding_type: input?.binding?.type ?? defaultBinding.type,
         binding_target_id: (input?.binding?.targetId ?? defaultBinding.targetId) || null,
       })
-      .select('id, owner_user_id, title, binding_type, binding_target_id, created_at, updated_at')
+      .select('id, owner_user_id, title, binding_type, binding_target_id, status, export_status, created_at, updated_at')
       .single()
 
     if (error || !data) {
@@ -621,10 +648,20 @@ async function createProjectRecord(user: AuthSession, bindingOptions: LessonBind
 
 async function loadProjectRows(projectId: string) {
   const supabase = createServiceSupabaseClient()
-  const [{ data: projectData, error: projectError }, { data: clipData, error: clipError }, { data: audioData, error: audioError }, { data: trackData, error: trackError }, { data: overlayData, error: overlayError }, { data: assetData, error: assetError }] = await Promise.all([
+  const [
+    { data: projectData, error: projectError },
+    { data: clipData, error: clipError },
+    { data: audioData, error: audioError },
+    { data: trackData, error: trackError },
+    { data: overlayData, error: overlayError },
+    { data: textOverlayData, error: textOverlayError },
+    { data: imageOverlayData, error: imageOverlayError },
+    { data: effectsData, error: effectsError },
+    { data: assetData, error: assetError },
+  ] = await Promise.all([
     supabase
       .from('video_projects')
-      .select('id, owner_user_id, title, binding_type, binding_target_id, created_at, updated_at')
+      .select('id, owner_user_id, title, binding_type, binding_target_id, status, export_status, created_at, updated_at')
       .eq('id', projectId)
       .single(),
     supabase
@@ -649,6 +686,21 @@ async function loadProjectRows(projectId: string) {
       .select('overlay_key, label, description, placement, enabled')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true }),
+    supabase
+      .from('video_text_overlays')
+      .select('overlay_key, content, font_family, font_size, color, background_color, position, start_seconds, end_seconds')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('video_image_overlays')
+      .select('overlay_key, label, storage_path, object_url, position, opacity, start_seconds, end_seconds')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('video_effect_settings')
+      .select('brightness, contrast, saturation, blur')
+      .eq('project_id', projectId)
+      .maybeSingle(),
     supabase
       .from('video_assets')
       .select(`
@@ -701,6 +753,18 @@ async function loadProjectRows(projectId: string) {
     throw overlayError
   }
 
+  if (textOverlayError) {
+    throw textOverlayError
+  }
+
+  if (imageOverlayError) {
+    throw imageOverlayError
+  }
+
+  if (effectsError) {
+    throw effectsError
+  }
+
   if (assetError) {
     throw assetError
   }
@@ -727,6 +791,9 @@ async function loadProjectRows(projectId: string) {
     trackRow: (trackData ?? null) as SubtitleTrackRow | null,
     cueRows: cuesData,
     overlayRows: (overlayData ?? []) as Array<Record<string, unknown>>,
+    textOverlayRows: (textOverlayData ?? []) as Array<Record<string, unknown>>,
+    imageOverlayRows: (imageOverlayData ?? []) as Array<Record<string, unknown>>,
+    effectRow: (effectsData ?? null) as Record<string, unknown> | null,
     assetRow: (assetData ?? null) as AssetRow | null,
   }
 }
@@ -790,7 +857,7 @@ async function loadProjectSnapshot(ownerUserId: string, projectId: string, bindi
   }
 
   try {
-    const { projectRow, clipRows, audioRow, cueRows, overlayRows, assetRow } = await loadProjectRows(projectId)
+    const { projectRow, clipRows, audioRow, cueRows, overlayRows, textOverlayRows, imageOverlayRows, effectRow, assetRow } = await loadProjectRows(projectId)
 
     return {
       id: projectRow.id,
@@ -837,6 +904,39 @@ async function loadProjectSnapshot(ownerUserId: string, projectId: string, bindi
           }))
         : createDefaultStamps(),
       exportSettings: createDefaultExportSettings(),
+      textOverlays: textOverlayRows.length > 0
+        ? textOverlayRows.map((row) => ({
+            id: String(row.overlay_key),
+            text: String(row.content),
+            fontFamily: (String(row.font_family ?? 'sans-serif') as 'sans-serif' | 'serif' | 'mono'),
+            fontSize: Number(row.font_size ?? 28),
+            color: String(row.color ?? '#ffffff'),
+            bgColor: row.background_color ? String(row.background_color) : null,
+            position: (String(row.position ?? 'bottom') as 'top' | 'center' | 'bottom'),
+            startSeconds: Number(row.start_seconds ?? 0),
+            endSeconds: Number(row.end_seconds ?? 0),
+          }))
+        : createDefaultTextOverlays(),
+      imageOverlays: imageOverlayRows.length > 0
+        ? imageOverlayRows.map((row) => ({
+            id: String(row.overlay_key),
+            label: String(row.label ?? ''),
+            storagePath: row.storage_path ? String(row.storage_path) : null,
+            objectUrl: row.object_url ? String(row.object_url) : null,
+            position: (String(row.position ?? 'top-right') as 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center'),
+            opacity: Number(row.opacity ?? 1),
+            startSeconds: Number(row.start_seconds ?? 0),
+            endSeconds: Number(row.end_seconds ?? 0),
+          }))
+        : createDefaultImageOverlays(),
+      videoEffects: effectRow
+        ? {
+            brightness: Number(effectRow.brightness ?? 0),
+            contrast: Number(effectRow.contrast ?? 0),
+            saturation: Number(effectRow.saturation ?? 0),
+            blur: Number(effectRow.blur ?? 0),
+          }
+        : createDefaultVideoEffects(),
       sourceAsset: await mapAssetRow(assetRow),
       updatedAt: projectRow.updated_at,
     }
@@ -1143,6 +1243,118 @@ export async function createVideoProject(user: AuthSession, input: CreateVideoPr
   }
 }
 
+export async function listVideoProjects(user: AuthSession, requestId: string): Promise<VideoProjectListItem[]> {
+  await ensureVideoStudioProfileProjection(user)
+
+  if (!hasSupabaseConfig()) {
+    const fallbackProject = fallbackProjects.get(user.id)
+    if (!fallbackProject) {
+      return []
+    }
+
+    return [{
+      id: fallbackProject.id,
+      title: fallbackProject.title,
+      bindingType: fallbackProject.binding.type,
+      bindingTargetId: fallbackProject.binding.targetId,
+      status: 'draft',
+      exportStatus: 'idle',
+      createdAt: fallbackProject.updatedAt,
+      updatedAt: fallbackProject.updatedAt,
+    }]
+  }
+
+  try {
+    const supabase = createServiceSupabaseClient()
+    const { data, error } = await supabase
+      .from('video_projects')
+      .select('id, title, binding_type, binding_target_id, status, export_status, created_at, updated_at')
+      .eq('owner_user_id', user.id)
+      .order('updated_at', { ascending: false })
+
+    if (error) {
+      throw error
+    }
+
+    return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      bindingType: row.binding_type as VideoProjectListItem['bindingType'],
+      bindingTargetId: row.binding_target_id ? String(row.binding_target_id) : null,
+      status: row.status as VideoProjectListItem['status'],
+      exportStatus: row.export_status as VideoProjectListItem['exportStatus'],
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at),
+    }))
+  } catch (error) {
+    throw new AppError('SERVICE_UNAVAILABLE', 'We could not list video projects.', {
+      requestId,
+      cause: error,
+    })
+  }
+}
+
+export async function duplicateVideoProject(user: AuthSession, input: DuplicateVideoProjectInput, requestId: string) {
+  const bindingOptions = await listBindingOptions(user.id)
+  const source = await ensureOwnedProject(user, input.projectId, bindingOptions)
+  const sourceSnapshot = await loadProjectSnapshot(user.id, source.id, bindingOptions)
+  const duplicatedProject = await createProjectRecord(user, bindingOptions, {
+    title: input.title ?? `${sourceSnapshot.title} (Copy)`,
+    binding: sourceSnapshot.binding,
+  })
+
+  return await saveVideoProject(user, {
+    projectId: duplicatedProject.id,
+    title: duplicatedProject.title,
+    binding: sourceSnapshot.binding,
+    segments: sourceSnapshot.segments,
+    audioSettings: sourceSnapshot.audioSettings,
+    subtitleCues: sourceSnapshot.subtitleCues,
+    stampOverlays: sourceSnapshot.stampOverlays,
+    exportSettings: sourceSnapshot.exportSettings,
+    textOverlays: sourceSnapshot.textOverlays,
+    imageOverlays: sourceSnapshot.imageOverlays,
+    videoEffects: sourceSnapshot.videoEffects,
+  }, requestId)
+}
+
+export async function deleteVideoProject(user: AuthSession, projectId: string, requestId: string): Promise<{ deleted: true }> {
+  await ensureOwnedProject(user, projectId)
+
+  if (!hasSupabaseConfig()) {
+    fallbackProjects.delete(user.id)
+    return { deleted: true }
+  }
+
+  try {
+    const supabase = createServiceSupabaseClient()
+    const { error } = await supabase
+      .from('video_projects')
+      .delete()
+      .eq('id', projectId)
+      .eq('owner_user_id', user.id)
+
+    if (error) {
+      throw error
+    }
+
+    await appendActivityLog({
+      userId: user.id,
+      module: 'video',
+      action: 'delete_project',
+      entityType: 'video_project',
+      entityId: projectId,
+    })
+
+    return { deleted: true }
+  } catch (error) {
+    throw new AppError('SERVICE_UNAVAILABLE', 'We could not delete the video project.', {
+      requestId,
+      cause: error,
+    })
+  }
+}
+
 export async function saveVideoProject(user: AuthSession, input: SaveVideoProjectInput, requestId: string) {
   const bindingOptions = await listBindingOptions(user.id)
   await ensureOwnedProject(user, input.projectId, bindingOptions)
@@ -1169,13 +1381,20 @@ export async function saveVideoProject(user: AuthSession, input: SaveVideoProjec
       throw projectError
     }
 
-    const [{ error: deleteClipsError }, { error: deleteOverlaysError }] = await Promise.all([
+    const [
+      { error: deleteClipsError },
+      { error: deleteOverlaysError },
+      { error: deleteTextOverlaysError },
+      { error: deleteImageOverlaysError },
+    ] = await Promise.all([
       supabase.from('timeline_clips').delete().eq('project_id', input.projectId),
       supabase.from('overlays').delete().eq('project_id', input.projectId),
+      supabase.from('video_text_overlays').delete().eq('project_id', input.projectId),
+      supabase.from('video_image_overlays').delete().eq('project_id', input.projectId),
     ])
 
-    if (deleteClipsError || deleteOverlaysError) {
-      throw deleteClipsError ?? deleteOverlaysError ?? new Error('We could not refresh the project timeline.')
+    if (deleteClipsError || deleteOverlaysError || deleteTextOverlaysError || deleteImageOverlaysError) {
+      throw deleteClipsError ?? deleteOverlaysError ?? deleteTextOverlaysError ?? deleteImageOverlaysError ?? new Error('We could not refresh the project timeline.')
     }
 
     if (input.segments.length > 0) {
@@ -1232,6 +1451,64 @@ export async function saveVideoProject(user: AuthSession, input: SaveVideoProjec
       if (overlaysError) {
         throw overlaysError
       }
+    }
+
+    if (input.textOverlays.length > 0) {
+      const { error: textOverlaysError } = await supabase.from('video_text_overlays').insert(
+        input.textOverlays.map((overlay) => ({
+          project_id: input.projectId,
+          overlay_key: overlay.id,
+          content: overlay.text,
+          font_family: overlay.fontFamily,
+          font_size: Math.round(overlay.fontSize),
+          color: overlay.color,
+          background_color: overlay.bgColor,
+          position: overlay.position,
+          start_seconds: Math.round(overlay.startSeconds),
+          end_seconds: Math.round(overlay.endSeconds),
+          updated_at: now,
+        })),
+      )
+
+      if (textOverlaysError) {
+        throw textOverlaysError
+      }
+    }
+
+    if (input.imageOverlays.length > 0) {
+      const { error: imageOverlaysError } = await supabase.from('video_image_overlays').insert(
+        input.imageOverlays.map((overlay) => ({
+          project_id: input.projectId,
+          overlay_key: overlay.id,
+          label: overlay.label,
+          storage_path: overlay.storagePath,
+          object_url: overlay.objectUrl,
+          position: overlay.position,
+          opacity: overlay.opacity,
+          start_seconds: Math.round(overlay.startSeconds),
+          end_seconds: Math.round(overlay.endSeconds),
+          updated_at: now,
+        })),
+      )
+
+      if (imageOverlaysError) {
+        throw imageOverlaysError
+      }
+    }
+
+    const { error: effectsError } = await supabase.from('video_effect_settings').upsert({
+      project_id: input.projectId,
+      brightness: Math.round(input.videoEffects.brightness),
+      contrast: Math.round(input.videoEffects.contrast),
+      saturation: Math.round(input.videoEffects.saturation),
+      blur: Math.round(input.videoEffects.blur),
+      updated_at: now,
+    }, {
+      onConflict: 'project_id',
+    })
+
+    if (effectsError) {
+      throw effectsError
     }
 
     return await loadProjectSnapshot(user.id, input.projectId, bindingOptions)
@@ -1455,6 +1732,36 @@ export async function completeVideoUpload(user: AuthSession, input: CompleteVide
     throw new AppError('SERVICE_UNAVAILABLE', 'We could not prepare the uploaded asset.', { requestId })
   }
 
+  await registerMediaItem({
+    ownerUserId: user.id,
+    sourceModule: 'video',
+    assetType: refreshedAsset.mimeType.startsWith('audio/') ? 'audio' : 'video',
+    fileName: refreshedAsset.fileName,
+    fileType: refreshedAsset.mimeType,
+    sizeBytes: refreshedAsset.fileSizeBytes,
+    storageBucket: refreshedAsset.storageBucket ?? null,
+    storagePath: refreshedAsset.storagePath ?? null,
+    variant: 'raw',
+    linkedEntityType: 'video_project',
+    linkedEntityId: input.projectId,
+    metadata: {
+      assetId: refreshedAsset.id,
+      sourceType: refreshedAsset.sourceType ?? 'uploaded',
+    },
+  })
+
+  await appendActivityLog({
+    userId: user.id,
+    module: 'video',
+    action: 'upload_completed',
+    entityType: 'video_asset',
+    entityId: refreshedAsset.id,
+    metadata: {
+      projectId: input.projectId,
+      fileName: refreshedAsset.fileName,
+    },
+  })
+
   return {
     asset: refreshedAsset,
     probeJob,
@@ -1566,12 +1873,12 @@ export async function processVideoProbe(payload: ProbeJobPayload) {
     const probe = await probeMediaFile(rawFilePath)
     if (probe.durationSeconds < uploadPolicy.minDurationSeconds) {
       await updateVideoAssetRow(assetRow.id, { status: 'failed', duration_seconds: probe.durationSeconds })
-      throw new AppError('VALIDATION_ERROR', 'Video must be at least 3m 00s long.')
+      throw new AppError('VALIDATION_ERROR', `Video must be at least ${formatDurationLabel(uploadPolicy.minDurationSeconds)} long.`)
     }
 
     if (probe.durationSeconds > uploadPolicy.maxDurationSeconds) {
       await updateVideoAssetRow(assetRow.id, { status: 'failed', duration_seconds: probe.durationSeconds })
-      throw new AppError('VALIDATION_ERROR', 'Video must be no longer than 1h 00m.')
+      throw new AppError('VALIDATION_ERROR', `Video must be no longer than ${formatDurationLabel(uploadPolicy.maxDurationSeconds)}.`)
     }
 
     await Promise.all([
@@ -1610,6 +1917,62 @@ export async function processVideoProbe(payload: ProbeJobPayload) {
         proxyReadyAt: new Date().toISOString(),
       },
     })
+
+    await Promise.all([
+      registerMediaItem({
+        ownerUserId: projectRow.owner_user_id,
+        sourceModule: 'video',
+        assetType: 'video',
+        fileName: 'proxy.mp4',
+        fileType: 'video/mp4',
+        sizeBytes: proxyBuffer.byteLength,
+        storageBucket: buckets.proxy,
+        storagePath: proxyPath,
+        variant: 'proxy',
+        linkedEntityType: 'video_project',
+        linkedEntityId: payload.projectId,
+        metadata: { assetId: payload.assetId },
+      }),
+      registerMediaItem({
+        ownerUserId: projectRow.owner_user_id,
+        sourceModule: 'video',
+        assetType: 'video',
+        fileName: 'master.mp4',
+        fileType: 'video/mp4',
+        sizeBytes: masterBuffer.byteLength,
+        storageBucket: buckets.rendered,
+        storagePath: masterPath,
+        variant: 'master',
+        linkedEntityType: 'video_project',
+        linkedEntityId: payload.projectId,
+        metadata: { assetId: payload.assetId },
+      }),
+      registerMediaItem({
+        ownerUserId: projectRow.owner_user_id,
+        sourceModule: 'video',
+        assetType: 'image',
+        fileName: 'thumbnail.jpg',
+        fileType: 'image/jpeg',
+        sizeBytes: thumbnailBuffer.byteLength,
+        storageBucket: buckets.thumbnails,
+        storagePath: nextThumbnailPath,
+        variant: 'thumbnail',
+        linkedEntityType: 'video_project',
+        linkedEntityId: payload.projectId,
+        metadata: { assetId: payload.assetId },
+      }),
+      appendActivityLog({
+        userId: projectRow.owner_user_id,
+        module: 'video',
+        action: 'probe_completed',
+        entityType: 'video_asset',
+        entityId: payload.assetId,
+        metadata: {
+          projectId: payload.projectId,
+          durationSeconds: probe.durationSeconds,
+        },
+      }),
+    ])
 
     const waveformJob = await createJob({
       type: 'video-waveform',
@@ -1724,11 +2087,10 @@ export async function processVideoSubtitles(payload: SubtitleJobPayload) {
         text: `${String(row.title)}: ${String(row.summary ?? 'Lesson caption draft.')}`,
       }))
 
-  const cueList = cues.length > 0 ? cues : createDefaultSubtitleCues()
   const content = [
     'WEBVTT',
     '',
-    ...cueList.flatMap((cue) => [
+    ...cues.flatMap((cue) => [
       `${toWebVttTimestamp(cue.startLabel)} --> ${toWebVttTimestamp(cue.endLabel)}`,
       cue.text,
       '',
@@ -1737,7 +2099,7 @@ export async function processVideoSubtitles(payload: SubtitleJobPayload) {
 
   const subtitlePath = `${payload.projectId}/captions/latest.vtt`
   await uploadBuffer(buckets.subtitles, subtitlePath, Buffer.from(content, 'utf-8'), 'text/vtt')
-  await writeSubtitleTrack(payload.projectId, cueList, buckets.subtitles, subtitlePath)
+  await writeSubtitleTrack(payload.projectId, cues, buckets.subtitles, subtitlePath)
 
   if (assetRow) {
     await updateVideoAssetRow(assetRow.id, {
@@ -1750,9 +2112,38 @@ export async function processVideoSubtitles(payload: SubtitleJobPayload) {
     })
   }
 
+  await Promise.all([
+    registerMediaItem({
+      ownerUserId: projectRow.owner_user_id,
+      sourceModule: 'video',
+      assetType: 'subtitle',
+      fileName: 'latest.vtt',
+      fileType: 'text/vtt',
+      sizeBytes: Buffer.byteLength(content, 'utf-8'),
+      storageBucket: buckets.subtitles,
+      storagePath: subtitlePath,
+      variant: 'subtitle',
+      linkedEntityType: 'video_project',
+      linkedEntityId: payload.projectId,
+      metadata: {
+        cueCount: cues.length,
+      },
+    }),
+    appendActivityLog({
+      userId: projectRow.owner_user_id,
+      module: 'video',
+      action: 'subtitle_generated',
+      entityType: 'video_project',
+      entityId: payload.projectId,
+      metadata: {
+        cueCount: cues.length,
+      },
+    }),
+  ])
+
   return {
     projectId: payload.projectId,
-    cueCount: cueList.length,
+    cueCount: cues.length,
     subtitlePath,
     ownerUserId: projectRow.owner_user_id,
   }
@@ -1799,6 +2190,33 @@ export async function processVideoRender(payload: RenderJobPayload) {
         renderCompletedAt: new Date().toISOString(),
       },
     })
+
+    await Promise.all([
+      registerMediaItem({
+        ownerUserId: projectRow.owner_user_id,
+        sourceModule: 'video',
+        assetType: 'video',
+        fileName: path.basename(renderPath),
+        fileType: 'video/mp4',
+        sizeBytes: renderBuffer.byteLength,
+        storageBucket: buckets.rendered,
+        storagePath: renderPath,
+        variant: 'export',
+        linkedEntityType: 'video_project',
+        linkedEntityId: payload.projectId,
+        metadata: { assetId: assetRow.id },
+      }),
+      appendActivityLog({
+        userId: projectRow.owner_user_id,
+        module: 'video',
+        action: 'render_completed',
+        entityType: 'video_project',
+        entityId: payload.projectId,
+        metadata: {
+          renderPath,
+        },
+      }),
+    ])
 
     return {
       projectId: payload.projectId,

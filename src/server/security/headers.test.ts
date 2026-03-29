@@ -16,9 +16,11 @@ describe('buildSecurityHeaders', () => {
     const csp = buildSecurityHeaders().get('Content-Security-Policy') || ''
     const scriptDirective = csp.split(';').map((part) => part.trim()).find((part) => part.startsWith('script-src'))
     const mediaDirective = csp.split(';').map((part) => part.trim()).find((part) => part.startsWith('media-src'))
+    const imageDirective = csp.split(';').map((part) => part.trim()).find((part) => part.startsWith('img-src'))
 
     expect(scriptDirective).toBe("script-src 'self' 'unsafe-inline'")
     expect(mediaDirective).toBe("media-src 'self' blob:")
+    expect(imageDirective).toBe("img-src 'self' data: blob: https://api.dicebear.com https://images.unsplash.com")
     expect(csp).toContain('https://api.dicebear.com')
   })
 })

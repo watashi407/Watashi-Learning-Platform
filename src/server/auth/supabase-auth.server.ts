@@ -5,6 +5,7 @@ import type { AuthSession, UserRole } from '../../shared/contracts/auth'
 import { AppError } from '../../shared/errors'
 import { getAdminEmails, getRequiredServerValue, hasSupabaseAuthConfig } from '../env'
 import { parseCookieHeader, serializeCookie } from '../http/cookies'
+import { sanitizeSupabaseRequestCookies } from './supabase-cookie-sanitizer'
 
 type PendingCookie = {
   name: string
@@ -64,6 +65,7 @@ export function createRequestSupabaseAuthClient(): RequestAuthClient {
 
   const request = getRequest()
   const pendingCookies: PendingCookie[] = []
+  const invalidCookieNames = new Set<string>()
 
   const client = createServerClient(
     getRequiredServerValue('VITE_SUPABASE_URL'),
@@ -71,7 +73,12 @@ export function createRequestSupabaseAuthClient(): RequestAuthClient {
     {
       cookies: {
         getAll() {
-          return parseCookieHeader(request.headers.get('cookie'))
+          const parsedCookies = parseCookieHeader(request.headers.get('cookie'))
+          const sanitizedCookies = sanitizeSupabaseRequestCookies(parsedCookies)
+          for (const rejectedCookieName of sanitizedCookies.rejectedCookieNames) {
+            invalidCookieNames.add(rejectedCookieName)
+          }
+          return sanitizedCookies.cookies
         },
         setAll(cookies) {
           pendingCookies.push(...cookies)
@@ -83,6 +90,19 @@ export function createRequestSupabaseAuthClient(): RequestAuthClient {
   return {
     client,
     flushCookies() {
+      if (invalidCookieNames.size > 0) {
+        pendingCookies.push(
+          ...[...invalidCookieNames].map((cookieName) => ({
+            name: cookieName,
+            value: '',
+            options: {
+              maxAge: 0,
+              path: '/',
+            },
+          })),
+        )
+      }
+
       if (pendingCookies.length === 0) {
         return
       }

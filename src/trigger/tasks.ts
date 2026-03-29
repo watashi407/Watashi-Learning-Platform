@@ -18,6 +18,10 @@ import {
   processVideoSubtitles,
   processVideoWaveform,
 } from '../modules/video-creation/video-studio.server'
+import {
+  processCertificateGenerate,
+  processCertificateReissue,
+} from '../features/educator/educator.server'
 import { normalizeError } from '../shared/errors'
 import { aiGenerationQueue, mediaProcessingQueue, notificationsQueue } from './queues'
 
@@ -152,6 +156,40 @@ export const videoRenderTask = task({
     await updateJob(jobId, { status: 'running', error: null })
     try {
       const result = await processVideoRender(payload)
+      await updateJob(jobId, { status: 'completed', result, error: null })
+      return result
+    } catch (error) {
+      const message = normalizeError(error, jobId).message
+      await updateJob(jobId, { status: 'failed', error: message })
+      throw error
+    }
+  },
+})
+
+export const certificateGenerateTask = task({
+  id: 'watashi-certificate-generate',
+  queue: mediaProcessingQueue,
+  run: async ({ jobId, payload }: JobPayload<{ templateId: string; learnerId: string; courseId: string; issuedByUserId: string | null; reason: 'manual' | 'completion' | 'reissue'; reissuedFromIssueId?: string | null }>) => {
+    await updateJob(jobId, { status: 'running', error: null })
+    try {
+      const result = await processCertificateGenerate(payload)
+      await updateJob(jobId, { status: 'completed', result, error: null })
+      return result
+    } catch (error) {
+      const message = normalizeError(error, jobId).message
+      await updateJob(jobId, { status: 'failed', error: message })
+      throw error
+    }
+  },
+})
+
+export const certificateReissueTask = task({
+  id: 'watashi-certificate-reissue',
+  queue: mediaProcessingQueue,
+  run: async ({ jobId, payload }: JobPayload<{ issueId: string; issuedByUserId: string | null }>) => {
+    await updateJob(jobId, { status: 'running', error: null })
+    try {
+      const result = await processCertificateReissue(payload)
       await updateJob(jobId, { status: 'completed', result, error: null })
       return result
     } catch (error) {

@@ -144,6 +144,9 @@ export type SaveVideoProjectInput = {
   subtitleCues: SubtitleCue[]
   stampOverlays: StampOverlay[]
   exportSettings: ExportSettings
+  textOverlays: TextOverlay[]
+  imageOverlays: ImageOverlay[]
+  videoEffects: VideoEffects
 }
 
 export type RecordingSessionInput = {
@@ -201,6 +204,25 @@ export type QueueVideoJobResult = {
   job: JobRecord
 }
 
+export type VideoProjectLifecycleStatus = 'draft' | 'published' | 'archived'
+export type VideoProjectExportStatus = 'idle' | 'queued' | 'processing' | 'completed' | 'failed'
+
+export type VideoProjectListItem = {
+  id: string
+  title: string
+  bindingType: LessonBindingType
+  bindingTargetId: string | null
+  status: VideoProjectLifecycleStatus
+  exportStatus: VideoProjectExportStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export type DuplicateVideoProjectInput = {
+  projectId: string
+  title?: string
+}
+
 export type TextOverlay = {
   id: string
   text: string
@@ -211,6 +233,8 @@ export type TextOverlay = {
   position: 'top' | 'center' | 'bottom'
   startSeconds: number
   endSeconds: number
+  x?: number
+  y?: number
 }
 
 export type ImageOverlay = {
@@ -222,6 +246,8 @@ export type ImageOverlay = {
   opacity: number
   startSeconds: number
   endSeconds: number
+  x?: number
+  y?: number
 }
 
 export type VideoEffects = {

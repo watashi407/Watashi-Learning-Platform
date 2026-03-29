@@ -43,7 +43,7 @@ export function WorkspacePanel({
   return (
     <section
       className={cx(
-        'rounded-[2rem] bg-[var(--color-watashi-surface-card)] p-6 shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)] sm:p-8',
+        'rounded-[2rem] bg-[var(--color-watashi-surface-card)] p-6 shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)] transition-shadow duration-200 sm:p-8',
         className,
       )}
     >
@@ -60,7 +60,7 @@ export function WorkspaceEyebrow({
   className?: string
 }) {
   return (
-    <p className={cx('text-[11px] font-extrabold uppercase tracking-[0.26em] text-[var(--color-watashi-text-soft)]', className)}>
+    <p className={cx('text-[11px] font-extrabold uppercase tracking-[0.22em] text-[var(--color-watashi-text-soft)]', className)}>
       {children}
     </p>
   )
@@ -76,7 +76,7 @@ export function SearchField({
   return (
     <label
       className={cx(
-        'flex min-w-0 items-center gap-3 rounded-full bg-[var(--color-watashi-surface-card)] px-4 py-2.5 text-sm text-[var(--color-watashi-text)] ring-1 ring-[var(--color-watashi-border)]',
+        'flex min-w-0 items-center gap-3 rounded-full bg-[var(--color-watashi-surface-card)] px-4 py-2.5 text-sm text-[var(--color-watashi-text)] ring-1 ring-[var(--color-watashi-border)] transition-shadow duration-200 focus-within:ring-2 focus-within:ring-[var(--color-watashi-indigo)]',
         className,
       )}
     >
@@ -123,7 +123,7 @@ export function RoleToggle({
             disabled={disabled || isActive || isPending || !onChange}
             onClick={() => onChange?.(option.key)}
             className={cx(
-              'rounded-full px-4 py-1.5 text-[11px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-70',
+              'rounded-full px-4 py-1.5 text-[11px] font-bold transition-all duration-200 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-70',
               isActive
                 ? 'bg-[var(--color-watashi-surface-card)] text-[var(--color-watashi-indigo)] shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)]'
                 : 'text-[var(--color-watashi-text)]',
@@ -170,7 +170,7 @@ export function ProgressTrack({
   return (
     <div className={cx('h-2 rounded-full bg-[var(--color-watashi-surface-low)]', className)}>
       <div
-        className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-watashi-emerald),var(--color-watashi-indigo))]"
+        className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-watashi-emerald),var(--color-watashi-indigo))] transition-[width] duration-500 ease-out"
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
       />
     </div>
@@ -187,7 +187,7 @@ export function FeatureBadge({
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.22em]',
+        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.22em] transition-colors duration-200',
         className || 'bg-[var(--color-watashi-primary-fixed)] text-[var(--color-watashi-emerald)]',
       )}
     >

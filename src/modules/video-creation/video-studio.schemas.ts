@@ -54,6 +54,37 @@ export const saveVideoProjectSchema = z.object({
     includeBurnedSubtitles: z.boolean(),
     renderPreset: z.enum(['balanced', 'publish', 'high-detail']),
   }),
+  textOverlays: z.array(
+    z.object({
+      id: z.string().min(1),
+      text: z.string().trim().min(1).max(400),
+      fontFamily: z.enum(['sans-serif', 'serif', 'mono']),
+      fontSize: z.number().int().min(10).max(220),
+      color: z.string().trim().min(1).max(64),
+      bgColor: z.string().trim().min(1).max(64).nullable(),
+      position: z.enum(['top', 'center', 'bottom']),
+      startSeconds: z.number().min(0),
+      endSeconds: z.number().min(0),
+    }),
+  ),
+  imageOverlays: z.array(
+    z.object({
+      id: z.string().min(1),
+      label: z.string().trim().min(1).max(240),
+      storagePath: z.string().trim().min(1).max(600).nullable(),
+      objectUrl: z.string().trim().min(1).max(2000).nullable(),
+      position: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center']),
+      opacity: z.number().min(0).max(1),
+      startSeconds: z.number().min(0),
+      endSeconds: z.number().min(0),
+    }),
+  ),
+  videoEffects: z.object({
+    brightness: z.number().int().min(-100).max(100),
+    contrast: z.number().int().min(-100).max(100),
+    saturation: z.number().int().min(-100).max(100),
+    blur: z.number().int().min(0).max(100),
+  }),
 })
 
 export const recordingSessionSchema = z.object({
@@ -88,5 +119,14 @@ export const completeVideoUploadSchema = z.object({
 })
 
 export const queueVideoJobSchema = z.object({
+  projectId: z.string().uuid(),
+})
+
+export const duplicateVideoProjectSchema = z.object({
+  projectId: z.string().uuid(),
+  title: z.string().trim().min(1).max(140).optional(),
+})
+
+export const deleteVideoProjectSchema = z.object({
   projectId: z.string().uuid(),
 })

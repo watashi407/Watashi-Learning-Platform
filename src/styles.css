@@ -21,6 +21,8 @@
   --color-watashi-border: rgba(25, 28, 30, 0.08);
   --color-watashi-overlay: rgba(255, 255, 255, 0.72);
   --shadow-watashi-panel: 0 28px 80px -54px rgba(18, 32, 43, 0.32);
+  --shadow-watashi-card: 0 4px 24px -12px rgba(18, 32, 43, 0.08);
+  --shadow-watashi-dropdown: 0 20px 60px -24px rgba(15, 23, 42, 0.4);
 }
 
 html,
@@ -51,6 +53,8 @@ html[data-theme="dark"] {
   --color-watashi-border: rgba(148, 163, 184, 0.2);
   --color-watashi-overlay: rgba(11, 19, 32, 0.82);
   --shadow-watashi-panel: 0 30px 80px -52px rgba(0, 0, 0, 0.72);
+  --shadow-watashi-card: 0 4px 24px -12px rgba(0, 0, 0, 0.2);
+  --shadow-watashi-dropdown: 0 20px 60px -24px rgba(0, 0, 0, 0.6);
 }
 
 body {
@@ -237,6 +241,20 @@ select {
 @keyframes watashi-fade-slide-up {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes watashi-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-in.scale-in {
+  animation-name: watashi-scale-in;
+}
+
+.watashi-focus-ring:focus-visible {
+  outline: 2px solid var(--color-watashi-indigo);
+  outline-offset: 2px;
 }
 
 @keyframes dash {

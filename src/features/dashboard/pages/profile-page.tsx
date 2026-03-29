@@ -7,14 +7,14 @@ import { ROUTE_PATHS } from '../../../shared/routing/paths'
 import { getDisplayErrorMessage, getErrorRequestId, unwrapActionResult } from '../../../shared/errors'
 import { updateProfile } from '../profile.functions'
 import { profileUpdateSchema } from '../profile.schemas'
-import { AppSectionHeader, AppSurfaceCard, appCx, getDashboardTheme } from '../ui'
+import { AppSectionHeader, AppSurfaceCard, cx, getDashboardTheme } from '../ui'
 import { useAppSession } from '../use-app-session'
 
 function ReadonlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-2">
-      <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">{label}</span>
-      <div className="rounded-[1.25rem] border border-slate-100 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700">
+      <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--color-watashi-text-soft)]">{label}</span>
+      <div className="rounded-[1.25rem] border border-[var(--color-watashi-border)] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-[var(--color-watashi-text)]">
         {value}
       </div>
     </div>
@@ -93,14 +93,14 @@ export function ProfilePage() {
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="rounded-[1.75rem] border border-slate-100 bg-slate-50 p-5">
+            <div className="rounded-[1.75rem] border border-[var(--color-watashi-border)] bg-[var(--color-watashi-surface-low)] p-5">
               <label className="grid gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Display name</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--color-watashi-text-soft)]">Display name</span>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
-                  className="rounded-[1.25rem] border border-slate-200 bg-white px-4 py-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-300 focus:ring-4 focus:ring-slate-900/5"
+                  className="rounded-[1.25rem] border border-[var(--color-watashi-border)] bg-[var(--color-watashi-surface-card)] px-4 py-4 text-sm font-semibold text-[var(--color-watashi-text-strong)] outline-none transition-all duration-200 focus:border-[var(--color-watashi-indigo)] focus:ring-4 focus:ring-[color-mix(in_oklab,var(--color-watashi-indigo)_10%,transparent)]"
                   placeholder="Your full name"
                   autoComplete="name"
                 />
@@ -113,16 +113,16 @@ export function ProfilePage() {
             </div>
 
             {submitSuccess ? (
-              <div className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              <div className="rounded-[1.5rem] border border-[color-mix(in_oklab,var(--color-watashi-emerald)_20%,var(--color-watashi-border))] bg-[color-mix(in_oklab,var(--color-watashi-emerald)_10%,var(--color-watashi-surface-card))] px-4 py-3 text-sm text-[var(--color-watashi-emerald)]">
                 {submitSuccess}
               </div>
             ) : null}
 
             {submitError ? (
-              <div className="rounded-[1.5rem] border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <div className="rounded-[1.5rem] border border-[color-mix(in_oklab,var(--color-watashi-ember)_20%,var(--color-watashi-border))] bg-[color-mix(in_oklab,var(--color-watashi-ember)_10%,var(--color-watashi-surface-card))] px-4 py-3 text-sm text-[var(--color-watashi-ember)]">
                 <p>{submitError.message}</p>
                 {submitError.requestId ? (
-                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-500">
+                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">
                     Support code: {submitError.requestId}
                   </p>
                 ) : null}
@@ -133,7 +133,7 @@ export function ProfilePage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className={appCx('inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60', theme.accentBg)}
+                className={cx('inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60', theme.accentBg)}
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Save profile
@@ -143,7 +143,7 @@ export function ProfilePage() {
                 type="button"
                 onClick={() => void handleLogout()}
                 disabled={loggingOut}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--color-watashi-border)] px-5 py-3 text-sm font-bold text-[var(--color-watashi-text-strong)] transition-all duration-200 hover:bg-[var(--color-watashi-surface-low)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
                 Sign out
@@ -152,25 +152,25 @@ export function ProfilePage() {
           </form>
 
           <div className="space-y-4">
-            <AppSurfaceCard className="border-none bg-slate-950 text-white shadow-[0_32px_80px_-52px_rgba(15,23,42,0.7)]">
+            <AppSurfaceCard className="border-none bg-[var(--color-watashi-surface-contrast)] text-white shadow-[0_32px_80px_-52px_rgba(15,23,42,0.7)]">
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
                 <ShieldCheck className="h-5 w-5" />
               </span>
-              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Access model</p>
+              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.22em] text-white/50">Access model</p>
               <h3 className="mt-2 text-2xl font-black tracking-tight">Role-secured navigation</h3>
-              <p className="mt-3 text-sm leading-7 text-slate-300">
+              <p className="mt-3 text-sm leading-7 text-white/70">
                 Navigation visibility and route access both come from the same central route definition map.
               </p>
             </AppSurfaceCard>
 
-            <div className="rounded-[1.75rem] border border-slate-100 bg-slate-50 p-5">
+            <div className="rounded-[1.75rem] border border-[var(--color-watashi-border)] bg-[var(--color-watashi-surface-low)] p-5">
               <div className="flex items-center gap-3">
-                <span className={appCx('flex h-12 w-12 items-center justify-center rounded-2xl', theme.accentSoft, theme.accentText)}>
+                <span className={cx('flex h-12 w-12 items-center justify-center rounded-2xl', theme.accentSoft, theme.accentText)}>
                   <UserRound className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-slate-950">Current session</p>
-                  <p className="text-xs text-slate-500">Header data refreshes after a successful profile save.</p>
+                  <p className="text-sm font-bold text-[var(--color-watashi-text-strong)]">Current session</p>
+                  <p className="text-xs text-[var(--color-watashi-text)]">Header data refreshes after a successful profile save.</p>
                 </div>
               </div>
             </div>

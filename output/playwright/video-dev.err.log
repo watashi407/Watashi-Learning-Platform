@@ -1,0 +1,72 @@
+(node:24784) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"level":"error","message":"Something went wrong on our side. Please try again.","requestId":"2d093821-91bb-4632-986e-958e9c8340af","code":"INTERNAL_ERROR"}
+{"level":"error","message":"Something went wrong on our side. Please try again.","requestId":"b0fc0123-340b-44bc-9115-191ee12d75f4","code":"INTERNAL_ERROR"}
+TypeError: fetch failed
+    at node:internal/deps/undici/undici:15845:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async _handleRequest (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\lib\fetch.ts:184:14)
+    at async _request (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\lib\fetch.ts:157:16)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1932:16)
+    at async SupabaseAuthClient._useSession (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1769:14)
+    at async SupabaseAuthClient._getUser (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1921:14)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1901:14)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1677:18) {
+  [cause]: ConnectTimeoutError: Connect Timeout Error (attempted address: oblrqbsiesozadorsoga.supabase.co:443, timeout: 10000ms)
+      at onConnectTimeout (node:internal/deps/undici/undici:1690:23)
+      at Immediate._onImmediate (node:internal/deps/undici/undici:1656:35)
+      at process.processImmediate (node:internal/timers:504:21) {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+TypeError: fetch failed
+    at node:internal/deps/undici/undici:15845:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async _handleRequest (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\lib\fetch.ts:184:14)
+    at async _request (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\lib\fetch.ts:157:16)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1932:16)
+    at async SupabaseAuthClient._useSession (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1769:14)
+    at async SupabaseAuthClient._getUser (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1921:14)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1901:14)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1677:18) {
+  [cause]: ConnectTimeoutError: Connect Timeout Error (attempted addresses: 104.18.38.10:443, 172.64.149.246:443, timeout: 10000ms)
+      at onConnectTimeout (node:internal/deps/undici/undici:1690:23)
+      at Immediate._onImmediate (node:internal/deps/undici/undici:1656:35)
+      at process.processImmediate (node:internal/timers:504:21) {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+TypeError: fetch failed
+    at node:internal/deps/undici/undici:15845:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async _handleRequest (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\lib\fetch.ts:184:14)
+    at async _request (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\lib\fetch.ts:157:16)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1932:16)
+    at async SupabaseAuthClient._useSession (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1769:14)
+    at async SupabaseAuthClient._getUser (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1921:14)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1901:14)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1677:18) {
+  [cause]: ConnectTimeoutError: Connect Timeout Error (attempted addresses: 104.18.38.10:443, 172.64.149.246:443, timeout: 10000ms)
+      at onConnectTimeout (node:internal/deps/undici/undici:1690:23)
+      at Immediate._onImmediate (node:internal/deps/undici/undici:1656:35)
+      at process.processImmediate (node:internal/timers:504:21) {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+TypeError: fetch failed
+    at node:internal/deps/undici/undici:15845:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async _handleRequest (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\lib\fetch.ts:184:14)
+    at async _request (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\lib\fetch.ts:157:16)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1932:16)
+    at async SupabaseAuthClient._useSession (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1769:14)
+    at async SupabaseAuthClient._getUser (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1921:14)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1901:14)
+    at async <anonymous> (C:\Users\hyper\Desktop\Watashi Learn\node_modules\.pnpm\@supabase+auth-js@2.99.2\node_modules\@supabase\auth-js\src\GoTrueClient.ts:1677:18) {
+  [cause]: ConnectTimeoutError: Connect Timeout Error (attempted addresses: 104.18.38.10:443, 172.64.149.246:443, timeout: 10000ms)
+      at onConnectTimeout (node:internal/deps/undici/undici:1690:23)
+      at Immediate._onImmediate (node:internal/deps/undici/undici:1656:35)
+      at process.processImmediate (node:internal/timers:504:21) {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}

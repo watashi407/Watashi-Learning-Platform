@@ -1,11 +1,13 @@
 import { unwrapActionResult } from '../../shared/errors'
 import type {
   CompleteVideoUploadInput,
+  DuplicateVideoProjectInput,
   CreateVideoProjectInput,
   CreateVideoUploadSessionInput,
   QueueVideoJobResult,
   RecordingSessionInput,
   SaveVideoProjectInput,
+  VideoProjectListItem,
 } from '../../shared/contracts/video-studio'
 import {
   bootstrapVideoStudioFn,
@@ -13,6 +15,9 @@ import {
   createRecordingSessionFn,
   createVideoProjectFn,
   createVideoUploadSessionFn,
+  deleteVideoProjectFn,
+  duplicateVideoProjectFn,
+  listVideoProjectsFn,
   queueRenderJobFn,
   queueSubtitleJobFn,
   saveVideoProjectFn,
@@ -28,6 +33,18 @@ export async function createVideoProjectClient(payload: CreateVideoProjectInput)
 
 export async function saveVideoProjectClient(payload: SaveVideoProjectInput) {
   return unwrapActionResult(await saveVideoProjectFn({ data: payload }))
+}
+
+export async function listVideoProjectsClient(): Promise<VideoProjectListItem[]> {
+  return unwrapActionResult(await listVideoProjectsFn())
+}
+
+export async function duplicateVideoProjectClient(payload: DuplicateVideoProjectInput) {
+  return unwrapActionResult(await duplicateVideoProjectFn({ data: payload }))
+}
+
+export async function deleteVideoProjectClient(projectId: string) {
+  return unwrapActionResult(await deleteVideoProjectFn({ data: { projectId } }))
 }
 
 export async function createRecordingSessionClient(payload: RecordingSessionInput) {

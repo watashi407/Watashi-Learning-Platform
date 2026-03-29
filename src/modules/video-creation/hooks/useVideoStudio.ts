@@ -16,6 +16,7 @@ import type {
   VideoEffects,
   VideoProjectSnapshot,
   VideoSegment,
+  VideoSourceType,
 } from '../types/video-project.types'
 import {
   bootstrapVideoStudioClient,
@@ -90,12 +91,27 @@ function isActiveJob(job: { status: string }) {
   return job.status === 'queued' || job.status === 'running'
 }
 
+function buildSourceSegment(durationSeconds: number): VideoSegment[] {
+  const safeDuration = Math.max(1, Math.round(durationSeconds))
+
+  return [
+    {
+      id: 'source',
+      title: 'Source clip',
+      summary: 'Imported source media clip.',
+      startSeconds: 0,
+      endSeconds: safeDuration,
+      tone: 'bg-[color-mix(in_oklab,var(--color-watashi-indigo)_18%,white)] text-slate-800',
+    },
+  ]
+}
+
 export function useVideoStudio() {
   const [project, setProject] = useState<VideoProjectSnapshot | null>(null)
   const [bindingOptions, setBindingOptions] = useState<LessonBindingOption[]>([])
   const [jobRecords, setJobRecords] = useState<Array<{ id: string; type: string; status: string; error: string | null }>>([])
   const [uploadPolicy, setUploadPolicy] = useState({
-    minDurationSeconds: 180,
+    minDurationSeconds: 0,
     maxDurationSeconds: 3600,
     maxFileSizeBytes: 2048 * 1024 * 1024,
   })
@@ -104,6 +120,7 @@ export function useVideoStudio() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [isInspecting, setIsInspecting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
 
   const latestProjectRef = useRef<VideoProjectSnapshot | null>(null)
   const hydratedRef = useRef(false)
@@ -127,6 +144,9 @@ export function useVideoStudio() {
         subtitleCues: nextBootstrap.project.subtitleCues,
         stampOverlays: nextBootstrap.project.stampOverlays,
         exportSettings: nextBootstrap.project.exportSettings,
+        textOverlays: nextBootstrap.project.textOverlays,
+        imageOverlays: nextBootstrap.project.imageOverlays,
+        videoEffects: nextBootstrap.project.videoEffects,
       })
       hydratedRef.current = true
       setSaveError(null)
@@ -162,6 +182,9 @@ export function useVideoStudio() {
       subtitleCues: project.subtitleCues,
       stampOverlays: project.stampOverlays,
       exportSettings: project.exportSettings,
+      textOverlays: project.textOverlays,
+      imageOverlays: project.imageOverlays,
+      videoEffects: project.videoEffects,
     })
 
     if (nextSnapshot === lastSavedSnapshotRef.current) {
@@ -180,6 +203,9 @@ export function useVideoStudio() {
           subtitleCues: project.subtitleCues,
           stampOverlays: project.stampOverlays,
           exportSettings: project.exportSettings,
+          textOverlays: project.textOverlays,
+          imageOverlays: project.imageOverlays,
+          videoEffects: project.videoEffects,
         })
         setProject((currentProject) => currentProject ? { ...currentProject, updatedAt: savedProject.updatedAt } : currentProject)
         latestProjectRef.current = savedProject
@@ -254,6 +280,30 @@ export function useVideoStudio() {
           : segment,
       ),
     }))
+  }
+
+  function splitSegment(segmentId: string, atSeconds: number) {
+    updateProject((p) => {
+      const seg = p.segments.find((s) => s.id === segmentId)
+      if (!seg) return p
+      const cutTime = Math.round(atSeconds)
+      // Need at least 1s on each side
+      if (cutTime <= seg.startSeconds + 1 || cutTime >= seg.endSeconds - 1) return p
+      const newId = `seg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      const first = { ...seg, endSeconds: cutTime }
+      const second = { ...seg, id: newId, title: `${seg.title} (2)`, startSeconds: cutTime }
+      return {
+        ...p,
+        segments: p.segments.flatMap((s) => (s.id === segmentId ? [first, second] : [s])),
+      }
+    })
+  }
+
+  function removeSegment(segmentId: string) {
+    updateProject((p) => {
+      if (p.segments.length <= 1) return p
+      return { ...p, segments: p.segments.filter((s) => s.id !== segmentId) }
+    })
   }
 
   function moveSegment(segmentId: string, direction: 'up' | 'down') {
@@ -387,17 +437,12 @@ export function useVideoStudio() {
     }))
   }
 
-  async function createCaptureSession(mode: 'camera' | 'audio' | 'screen-camera') {
+  async function createCaptureSession() {
     if (!project) {
       return
     }
 
-    const sources: RecordingSessionInput['sources'] =
-      mode === 'screen-camera'
-        ? { screen: true, camera: true, microphone: true }
-        : mode === 'audio'
-          ? { screen: false, camera: false, microphone: true }
-          : { screen: false, camera: true, microphone: true }
+    const sources: RecordingSessionInput['sources'] = { screen: true, camera: true, microphone: true }
 
     await createRecordingSessionClient({
       projectId: project.id,
@@ -409,7 +454,7 @@ export function useVideoStudio() {
     })
   }
 
-  async function stageFile(file: File | null) {
+  async function stageFile(file: File | null, sourceType: VideoSourceType = 'uploaded') {
     if (!file || !project) {
       return { accepted: false, errors: [] }
     }
@@ -417,8 +462,16 @@ export function useVideoStudio() {
     setValidationErrors([])
     setIsInspecting(true)
 
+    let localObjectUrl: string | null = null
+
     try {
-      const durationSeconds = await readVideoDuration(file)
+      let durationSeconds = 0
+      try {
+        durationSeconds = await readVideoDuration(file)
+      } catch {
+        durationSeconds = 0
+      }
+
       const validation = validateVideoUpload(file, durationSeconds, uploadPolicy)
       if (!validation.isValid) {
         setValidationErrors(validation.errors)
@@ -428,85 +481,136 @@ export function useVideoStudio() {
         }
       }
 
-      const session = await createVideoUploadSessionClient({
-        projectId: project.id,
-        fileName: file.name,
-        contentType: file.type || 'video/mp4',
-        contentLength: file.size,
-        sourceType: 'uploaded',
-      })
-
-      const localObjectUrl = URL.createObjectURL(file)
+      localObjectUrl = URL.createObjectURL(file)
       if (currentObjectUrlRef.current) {
         URL.revokeObjectURL(currentObjectUrlRef.current)
       }
       currentObjectUrlRef.current = localObjectUrl
 
-      if (session.resumableUrl) {
-        await new Promise<void>((resolve, reject) => {
-          const upload = new tus.Upload(file, {
-            endpoint: session.resumableUrl,
-            chunkSize: 5 * 1024 * 1024,
-            retryDelays: [0, 1500, 3000, 5000],
-            uploadSize: file.size,
-            metadata: {
-              uploadId: session.uploadId,
-            },
-            headers: {
-              'x-video-upload-token': session.token,
-            },
-            onError: reject,
-            onSuccess: () => resolve(),
-          })
-
-          void upload.findPreviousUploads().then((previousUploads) => {
-            if (previousUploads[0]) {
-              upload.resumeFromPreviousUpload(previousUploads[0])
-            }
-
-            upload.start()
-          }).catch(reject)
-        })
-      }
-
-      const uploadResult = await completeVideoUploadClient({
-        uploadId: session.uploadId,
+      const localDuration = Math.max(1, Math.round(durationSeconds))
+      const localAsset: UploadedVideoAsset = {
+        id: `local-${Date.now()}`,
         projectId: project.id,
         fileName: file.name,
-        contentType: file.type || 'video/mp4',
-        sourceType: 'uploaded',
-      })
-
-      setJobRecords((currentJobs) => [
-        uploadResult.probeJob,
-        ...currentJobs.filter((job) => job.id !== uploadResult.probeJob.id),
-      ])
-
-      const nextAsset: UploadedVideoAsset = {
-        ...uploadResult.asset,
-        durationSeconds: uploadResult.asset.durationSeconds || durationSeconds,
-        objectUrl: uploadResult.asset.objectUrl || localObjectUrl,
+        fileSizeBytes: file.size,
+        durationSeconds: localDuration,
+        mimeType: file.type || 'video/mp4',
+        objectUrl: localObjectUrl,
+        sourceType,
+        status: 'processing',
       }
 
       updateProject((currentProject) => ({
         ...currentProject,
-        sourceAsset: nextAsset,
+        sourceAsset: localAsset,
+        segments: buildSourceSegment(localDuration),
       }))
 
-      return {
-        accepted: true,
-        errors: [],
-        asset: nextAsset,
+      try {
+        const session = await createVideoUploadSessionClient({
+          projectId: project.id,
+          fileName: file.name,
+          contentType: file.type || 'video/mp4',
+          contentLength: file.size,
+          sourceType,
+        })
+
+        if (session.resumableUrl) {
+          setUploadProgress(0)
+          await new Promise<void>((resolve, reject) => {
+            const upload = new tus.Upload(file, {
+              endpoint: session.resumableUrl,
+              chunkSize: 5 * 1024 * 1024,
+              retryDelays: [0, 1500, 3000, 5000],
+              uploadSize: file.size,
+              metadata: {
+                uploadId: session.uploadId,
+              },
+              headers: {
+                'x-video-upload-token': session.token,
+              },
+              onError: reject,
+              onProgress: (bytesUploaded, bytesTotal) => {
+                setUploadProgress(bytesTotal > 0 ? (bytesUploaded / bytesTotal) * 100 : 0)
+              },
+              onSuccess: () => {
+                setUploadProgress(100)
+                resolve()
+              },
+            })
+
+            void upload.findPreviousUploads().then((previousUploads) => {
+              if (previousUploads[0]) {
+                upload.resumeFromPreviousUpload(previousUploads[0])
+              }
+
+              upload.start()
+            }).catch(reject)
+          })
+        }
+
+        setUploadProgress(null)
+
+        const uploadResult = await completeVideoUploadClient({
+          uploadId: session.uploadId,
+          projectId: project.id,
+          fileName: file.name,
+          contentType: file.type || 'video/mp4',
+          sourceType,
+        })
+
+        setJobRecords((currentJobs) => [
+          uploadResult.probeJob,
+          ...currentJobs.filter((job) => job.id !== uploadResult.probeJob.id),
+        ])
+
+        const nextDurationSeconds = Math.max(
+          1,
+          Math.round(uploadResult.asset.durationSeconds || durationSeconds || localDuration),
+        )
+        const nextAsset: UploadedVideoAsset = {
+          ...uploadResult.asset,
+          durationSeconds: nextDurationSeconds,
+          objectUrl: uploadResult.asset.objectUrl || localObjectUrl,
+        }
+
+        updateProject((currentProject) => ({
+          ...currentProject,
+          sourceAsset: nextAsset,
+          segments: buildSourceSegment(nextDurationSeconds),
+        }))
+
+        return {
+          accepted: true,
+          errors: [],
+          asset: nextAsset,
+        }
+      } catch (error) {
+        const message = getDisplayErrorMessage(error, 'The video is loaded locally, but cloud sync failed.')
+        setValidationErrors([message])
+
+        return {
+          accepted: true,
+          errors: [message],
+          asset: localAsset,
+        }
       }
     } catch (error) {
       const message = getDisplayErrorMessage(error, 'We could not upload that video.')
       setValidationErrors([message])
+
+      if (localObjectUrl && currentObjectUrlRef.current === localObjectUrl) {
+        URL.revokeObjectURL(localObjectUrl)
+        currentObjectUrlRef.current = null
+      }
+
       return {
         accepted: false,
         errors: [message],
       }
     } finally {
       setIsInspecting(false)
+      setUploadProgress(null)
     }
   }
 
@@ -541,6 +645,7 @@ export function useVideoStudio() {
     uploadedAsset: project?.sourceAsset ?? null,
     validationErrors,
     isInspecting,
+    uploadProgress,
     createCaptureSession,
     stageFile,
     queueSubtitleWorkflow,
@@ -549,6 +654,8 @@ export function useVideoStudio() {
     setProjectTitle,
     segments: project?.segments ?? [],
     updateSegment,
+    splitSegment,
+    removeSegment,
     moveSegment,
     audioSettings: project?.audioSettings ?? createDefaultAudioSettings(),
     updateAudioSetting,

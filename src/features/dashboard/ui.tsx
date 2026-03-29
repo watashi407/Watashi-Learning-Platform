@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import type { AuthSession } from '../../shared/contracts/auth'
+import { cx, roleTheme } from '../../shared/ui/workspace'
+
+export { cx }
 
 export type DashboardTheme = {
   accentBg: string
@@ -8,31 +11,16 @@ export type DashboardTheme = {
 }
 
 export function getDashboardTheme(role: AuthSession['role']): DashboardTheme {
-  if (role === 'educator') {
-    return {
-      accentBg: 'bg-[#4b41e1]',
-      accentText: 'text-[#4b41e1]',
-      accentSoft: 'bg-[#4b41e1]/10',
-    }
-  }
-
-  if (role === 'admin') {
-    return {
-      accentBg: 'bg-slate-900',
-      accentText: 'text-slate-900',
-      accentSoft: 'bg-slate-900/10',
-    }
-  }
-
+  const theme = roleTheme(role)
   return {
-    accentBg: 'bg-[#176851]',
-    accentText: 'text-[#176851]',
-    accentSoft: 'bg-[#176851]/10',
+    accentBg: theme.accentBg,
+    accentText: theme.accentText,
+    accentSoft: theme.accentSoft,
   }
 }
 
 export function appCx(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(' ')
+  return cx(...values)
 }
 
 export function AppSurfaceCard({
@@ -44,8 +32,8 @@ export function AppSurfaceCard({
 }) {
   return (
     <section
-      className={appCx(
-        'rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.35)] backdrop-blur-sm sm:p-8',
+      className={cx(
+        'rounded-[2rem] bg-[var(--color-watashi-surface-card)] p-6 shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)] backdrop-blur-sm transition-shadow duration-200 sm:p-8',
         className,
       )}
     >
@@ -68,9 +56,9 @@ export function AppSectionHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">{eyebrow}</p>
-        <h2 className="mt-2 font-display text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{title}</h2>
-        {description ? <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">{description}</p> : null}
+        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--color-watashi-text-soft)]">{eyebrow}</p>
+        <h2 className="mt-2 font-display text-3xl font-black tracking-tight text-[var(--color-watashi-text-strong)] sm:text-4xl">{title}</h2>
+        {description ? <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-watashi-text)]">{description}</p> : null}
       </div>
       {action}
     </div>
@@ -86,7 +74,7 @@ export function UserInitials({ user }: { user: AuthSession }) {
     .join('')
 
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-watashi-surface-contrast)] text-sm font-bold text-[var(--color-watashi-surface)]">
       {initials || 'WL'}
     </div>
   )

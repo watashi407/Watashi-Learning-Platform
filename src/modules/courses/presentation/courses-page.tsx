@@ -13,20 +13,20 @@ export function CoursesPage() {
       <section className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-3xl">
           <FeatureBadge>{user.role === 'educator' ? 'Educator pathway' : 'Learner pathway'}</FeatureBadge>
-          <h1 className="mt-5 font-display text-[clamp(3.2rem,7vw,5.4rem)] font-black leading-[0.88] tracking-[-0.08em] text-slate-950">
+          <h1 className="mt-5 font-display text-[clamp(2.4rem,5vw,3.8rem)] font-black leading-[0.88] tracking-[-0.08em] text-[var(--color-watashi-text-strong)]">
             Your Learning <span className={theme.accentText}>Paths</span>
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-8 text-slate-500">
+          <p className="mt-5 max-w-xl text-base leading-8 text-[var(--color-watashi-text)]">
             Curate your intellectual journey with modular architectures, cognitive frameworks, and route-level course surfaces that scale cleanly.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button type="button" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-watashi-surface-low)] px-5 py-3 text-sm font-bold text-slate-700">
+          <button type="button" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-watashi-surface-low)] px-5 py-3 text-sm font-bold text-[var(--color-watashi-text-strong)] transition-colors duration-200 hover:bg-[var(--color-watashi-surface-high)]">
             <Filter className="h-4 w-4" />
             Filter
           </button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-watashi-indigo)] px-5 py-3 text-sm font-bold text-white shadow-[0_18px_40px_-24px_rgba(75,65,225,0.55)]">
+          <button type="button" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-watashi-indigo)] px-5 py-3 text-sm font-bold text-white shadow-[0_18px_40px_-24px_rgba(75,65,225,0.55)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]">
             <Plus className="h-4 w-4" />
             New Pathway
           </button>
@@ -39,7 +39,7 @@ export function CoursesPage() {
             <WorkspacePanel
               key={course.title}
               className={cx(
-                'relative overflow-hidden rounded-[2rem] bg-gradient-to-br',
+                'relative overflow-hidden rounded-[2rem] bg-gradient-to-br transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-watashi-panel)]',
                 course.accent,
                 index === 0 ? 'md:col-span-2 md:min-h-[23rem]' : 'min-h-[19rem]',
                 index === 3 && 'from-[var(--color-watashi-indigo)] to-[#7066ff] text-white',
@@ -48,24 +48,24 @@ export function CoursesPage() {
               <div className="relative flex h-full flex-col justify-between">
                 <div>
                   <WorkspaceEyebrow className={index === 3 ? 'text-white/65' : ''}>{course.label}</WorkspaceEyebrow>
-                  <h2 className={cx('mt-4 max-w-[15ch] font-display text-[2rem] font-black leading-tight tracking-[-0.05em]', index === 3 ? 'text-white' : 'text-slate-950')}>
+                  <h2 className={cx('mt-4 max-w-[15ch] font-display text-[2rem] font-black leading-tight tracking-[-0.05em]', index === 3 ? 'text-white' : 'text-[var(--color-watashi-text-strong)]')}>
                     {course.title}
                   </h2>
-                  <p className={cx('mt-4 max-w-[34ch] text-sm leading-7', index === 3 ? 'text-white/75' : 'text-slate-500')}>
+                  <p className={cx('mt-4 max-w-[34ch] text-sm leading-7', index === 3 ? 'text-white/75' : 'text-[var(--color-watashi-text)]')}>
                     {course.summary}
                   </p>
                 </div>
 
                 <div className="mt-8 flex items-end justify-between gap-6">
                   <div>
-                    <p className={cx('text-[10px] font-black uppercase tracking-[0.22em]', index === 3 ? 'text-white/60' : 'text-slate-400')}>
+                    <p className={cx('text-[10px] font-black uppercase tracking-[0.22em]', index === 3 ? 'text-white/60' : 'text-[var(--color-watashi-text-soft)]')}>
                       {course.metricLabel}
                     </p>
                     <p className={cx('mt-2 text-lg font-black', index === 3 ? 'text-white' : theme.accentText)}>
                       {course.metricValue}
                     </p>
                   </div>
-                  <Link to="/courses" className={cx('inline-flex items-center gap-2 text-sm font-bold', index === 3 ? 'text-white' : 'text-slate-700')}>
+                  <Link to="/courses" className={cx('inline-flex items-center gap-2 text-sm font-bold', index === 3 ? 'text-white' : 'text-[var(--color-watashi-text-strong)]')}>
                     Explore
                     <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -76,10 +76,10 @@ export function CoursesPage() {
         </div>
 
         <div className="space-y-6">
-          <WorkspacePanel className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(242,244,246,0.94))]">
+          <WorkspacePanel className="bg-[linear-gradient(180deg,var(--color-watashi-surface-card),var(--color-watashi-surface-low))]">
             <WorkspaceEyebrow>Knowledge rail</WorkspaceEyebrow>
-            <h2 className="mt-3 font-display text-[2rem] font-black tracking-[-0.05em] text-slate-950">Guided by signal</h2>
-            <p className="mt-4 text-sm leading-7 text-slate-500">
+            <h2 className="mt-3 font-display text-[2rem] font-black tracking-[-0.05em] text-[var(--color-watashi-text-strong)]">Guided by signal</h2>
+            <p className="mt-4 text-sm leading-7 text-[var(--color-watashi-text)]">
               Course discovery, progress, and authoring now live in their own module so new catalog states can grow without bloating the dashboard.
             </p>
           </WorkspacePanel>
@@ -89,13 +89,13 @@ export function CoursesPage() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <WorkspaceEyebrow>{item.label}</WorkspaceEyebrow>
-                  <p className="mt-2 text-[1.9rem] font-black tracking-[-0.05em] text-slate-950">{item.value}</p>
+                  <p className="mt-2 text-[1.9rem] font-black tracking-[-0.05em] text-[var(--color-watashi-text-strong)]">{item.value}</p>
                 </div>
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-watashi-primary-fixed)] text-[var(--color-watashi-emerald)]">
                   <Sparkles className="h-4 w-4" />
                 </span>
               </div>
-              <p className="mt-3 text-sm text-slate-500">{item.detail}</p>
+              <p className="mt-3 text-sm text-[var(--color-watashi-text)]">{item.detail}</p>
             </WorkspacePanel>
           ))}
         </div>

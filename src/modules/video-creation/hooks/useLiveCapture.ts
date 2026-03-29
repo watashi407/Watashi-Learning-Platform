@@ -365,98 +365,13 @@ async function createScreenCameraCapture(): Promise<CapturePreparation> {
   }
 }
 
-async function createCameraCapture(): Promise<CapturePreparation> {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('Camera capture is not available in this browser.')
-  }
-
-  const cameraStream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      width: { ideal: 1920, max: 1920 },
-      height: { ideal: 1080, max: 1080 },
-      frameRate: { ideal: 30, max: 30 },
-    },
-  })
-  const microphoneResult = await requestOptionalUserMedia('Microphone', {
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-    },
-  })
-  const microphoneStream = microphoneResult.stream
-  const mixedAudio = createMixedAudioStream(
-    [microphoneStream].filter((stream): stream is MediaStream => Boolean(stream)),
-  )
-
-  return {
-    previewStream: cameraStream,
-    recordStream: new MediaStream([
-      ...cameraStream.getVideoTracks(),
-      ...(mixedAudio.stream?.getAudioTracks() ?? []),
-    ]),
-    sourceAvailability: {
-      screen: false,
-      camera: true,
-      microphone: Boolean(microphoneStream?.getAudioTracks().length),
-      systemAudio: false,
-    },
-    warningMessage: microphoneResult.warningMessage,
-    cleanup: () => {
-      mixedAudio.cleanup()
-      stopStream(cameraStream)
-      stopStream(microphoneStream)
-    },
-  }
-}
-
-async function createAudioCapture(): Promise<CapturePreparation> {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('Microphone capture is not available in this browser.')
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    })
-
-    return {
-      previewStream: null,
-      recordStream: stream,
-      sourceAvailability: {
-        screen: false,
-        camera: false,
-        microphone: true,
-        systemAudio: false,
-      },
-      warningMessage: null,
-      cleanup: () => {
-        stopStream(stream)
-      },
-    }
-  } catch (error) {
-    throw new Error(describeRequiredCaptureError('Microphone', error))
-  }
-}
-
 async function prepareCapture(mode: LiveCaptureMode): Promise<CapturePreparation> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('Live capture is not available in this browser.')
   }
 
-  if (mode === 'screen-camera') {
-    return createScreenCameraCapture()
-  }
-
-  if (mode === 'camera') {
-    return createCameraCapture()
-  }
-
-  return createAudioCapture()
+  void mode
+  return createScreenCameraCapture()
 }
 
 export function useLiveCapture() {
@@ -573,14 +488,12 @@ export function useLiveCapture() {
     }
 
     try {
-      const mimeTypeCandidates = mode === 'audio'
-        ? ['audio/webm;codecs=opus', 'audio/webm']
-        : ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+      const mimeTypeCandidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
       const mimeType = mimeTypeCandidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? ''
       const recorder = new MediaRecorder(preparedCapture.recordStream, mimeType
         ? {
             mimeType,
-            videoBitsPerSecond: mode === 'audio' ? undefined : 2_400_000,
+            videoBitsPerSecond: 2_400_000,
             audioBitsPerSecond: 128_000,
           }
         : undefined)
@@ -598,7 +511,7 @@ export function useLiveCapture() {
         startedAtRef.current = null
         elapsedBeforePauseRef.current = 0
 
-        const nextMimeType = recorder.mimeType || mimeType || (mode === 'audio' ? 'audio/webm' : 'video/webm')
+        const nextMimeType = recorder.mimeType || mimeType || 'video/webm'
         const extension = getFileExtension(nextMimeType)
         const fileName = `${mode}-${getTimestampLabel()}.${extension}`
         const file = new File(chunksRef.current, fileName, { type: nextMimeType })
@@ -700,6 +613,10 @@ export function useLiveCapture() {
   }
 
   function changeMode(nextMode: LiveCaptureMode) {
+    if (nextMode !== 'screen-camera') {
+      return
+    }
+
     if (nextMode === mode) {
       return
     }

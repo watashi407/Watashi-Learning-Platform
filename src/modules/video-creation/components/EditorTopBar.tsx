@@ -1,65 +1,55 @@
-import { Camera, Clapperboard, Download, Loader2, Mic, Save } from 'lucide-react'
+import { AlertTriangle, Check, Download, Loader2, Save, Video } from 'lucide-react'
 import type { LiveCaptureMode, ProcessingJob } from '../types/video-project.types'
 import { cx } from '../../../shared/ui/workspace'
 
 type JobTone = 'idle' | 'queued' | 'processing' | 'completed' | 'failed'
 
 function jobPillStyle(status: JobTone) {
-  if (status === 'completed') return 'bg-[#e0f3ea] text-[#175b48] ring-[#cfe7dc]'
-  if (status === 'queued' || status === 'processing') return 'bg-[#e4ebff] text-[#4156b7] ring-[#d6dff9]'
-  if (status === 'failed') return 'bg-[#ffe8e6] text-[#b84d48] ring-[#f3d3cf]'
-  return 'bg-[#f2f4ef] text-[#7c897f] ring-[#e1e5de]'
+  if (status === 'completed') return 'bg-[color-mix(in_oklab,var(--color-watashi-emerald)_12%,var(--color-watashi-surface-card))] text-[var(--color-watashi-emerald)] ring-[color-mix(in_oklab,var(--color-watashi-emerald)_20%,var(--color-watashi-border))]'
+  if (status === 'queued' || status === 'processing') return 'bg-[color-mix(in_oklab,var(--color-watashi-indigo)_10%,var(--color-watashi-surface-card))] text-[var(--color-watashi-indigo)] ring-[color-mix(in_oklab,var(--color-watashi-indigo)_18%,var(--color-watashi-border))]'
+  if (status === 'failed') return 'bg-[color-mix(in_oklab,var(--color-watashi-ember)_10%,var(--color-watashi-surface-card))] text-[var(--color-watashi-ember)] ring-[color-mix(in_oklab,var(--color-watashi-ember)_18%,var(--color-watashi-border))]'
+  return 'bg-[var(--color-watashi-surface-low)] text-[var(--color-watashi-text-soft)] ring-[var(--color-watashi-border)]'
 }
-
-const captureButtons: Array<{ mode: LiveCaptureMode; icon: typeof Camera; label: string }> = [
-  { mode: 'screen-camera', icon: Clapperboard, label: 'Screen + Cam' },
-  { mode: 'camera', icon: Camera, label: 'Camera' },
-  { mode: 'audio', icon: Mic, label: 'Audio' },
-]
 
 type EditorTopBarProps = {
   title: string
   onTitleChange: (value: string) => void
   jobs: ProcessingJob[]
   isSaving: boolean
+  saveError: string | null
+  uploadProgress: number | null
   exportBlocked: string | null
   onRecord: (mode: LiveCaptureMode) => void
   onExport: () => void
 }
 
-export function EditorTopBar({ title, onTitleChange, jobs, isSaving, exportBlocked, onRecord, onExport }: EditorTopBarProps) {
+export function EditorTopBar({ title, onTitleChange, jobs, isSaving, saveError, uploadProgress, exportBlocked, onRecord, onExport }: EditorTopBarProps) {
   const activeJobs = jobs.filter((j) => j.status !== 'idle')
 
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-watashi-border)] bg-[var(--color-watashi-surface-card)] px-4 py-3">
-      {/* Title */}
+    <div className="flex items-center gap-2 border-b border-[var(--color-watashi-border)] bg-[var(--color-watashi-surface-card)] px-4 py-2.5">
+      {/* Project title */}
       <input
         type="text"
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
-        className="min-w-0 flex-1 rounded-xl bg-[var(--color-watashi-surface-low)] px-3 py-2 text-sm font-semibold text-[var(--color-watashi-text-strong)] outline-none ring-1 ring-transparent transition-shadow focus:ring-[var(--color-watashi-border)] placeholder:text-[var(--color-watashi-text-soft)]"
-        placeholder="Project title"
+        className="min-w-0 max-w-[220px] flex-shrink rounded-md bg-transparent px-2 py-1 text-[13px] font-bold text-[var(--color-watashi-text-strong)] outline-none transition-all placeholder:text-[var(--color-watashi-text-soft)] hover:bg-[var(--color-watashi-surface-low)] focus:bg-[var(--color-watashi-surface-low)] focus:ring-1 focus:ring-[var(--color-watashi-border)]"
+        placeholder="Untitled project"
         aria-label="Project title"
       />
 
-      {/* Recording mode buttons */}
-      <div className="flex items-center gap-1 rounded-xl bg-[var(--color-watashi-surface-low)] p-1">
-        {captureButtons.map((btn) => {
-          const Icon = btn.icon
-          return (
-            <button
-              key={btn.label}
-              type="button"
-              onClick={() => onRecord(btn.mode)}
-              title={`Record: ${btn.label}`}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--color-watashi-text)] transition-colors hover:bg-[var(--color-watashi-surface-card)] hover:text-[var(--color-watashi-indigo)]"
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{btn.label}</span>
-            </button>
-          )
-        })}
-      </div>
+      <div className="h-4 w-px shrink-0 bg-[var(--color-watashi-border)]" />
+
+      {/* Record button */}
+      <button
+        type="button"
+        onClick={() => onRecord('screen-camera')}
+        className="flex items-center gap-1.5 rounded-full border border-[var(--color-watashi-border)] bg-[var(--color-watashi-surface-low)] px-3 py-1.5 text-[11px] font-semibold text-[var(--color-watashi-text)] transition-all hover:border-red-400/40 hover:bg-red-50/50 hover:text-red-600 dark:hover:bg-red-950/20 dark:hover:text-red-400"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+        <Video className="h-3 w-3" />
+        <span className="hidden sm:inline">Screen + Cam</span>
+      </button>
 
       {/* Active job pills */}
       {activeJobs.length > 0 && (
@@ -67,7 +57,7 @@ export function EditorTopBar({ title, onTitleChange, jobs, isSaving, exportBlock
           {activeJobs.map((job) => (
             <span
               key={job.id}
-              className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1', jobPillStyle(job.status as JobTone))}
+              className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold ring-1', jobPillStyle(job.status as JobTone))}
             >
               {(job.status === 'queued' || job.status === 'processing') && <Loader2 className="h-3 w-3 animate-spin" />}
               {job.label}
@@ -76,13 +66,43 @@ export function EditorTopBar({ title, onTitleChange, jobs, isSaving, exportBlock
         </div>
       )}
 
+      {/* Upload progress */}
+      {uploadProgress !== null && uploadProgress < 100 && (
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold text-[var(--color-watashi-indigo)]">
+            Uploading {Math.round(uploadProgress)}%
+          </span>
+          <div className="h-1 w-20 overflow-hidden rounded-full bg-[var(--color-watashi-surface-low)]">
+            <div
+              className="h-full rounded-full bg-[var(--color-watashi-indigo)] transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
       {/* Save indicator */}
-      {isSaving && (
-        <span className="flex items-center gap-1 text-[11px] font-semibold text-[var(--color-watashi-text-soft)]">
-          <Save className="h-3.5 w-3.5 animate-pulse" />
-          Saving
+      {saveError ? (
+        <span className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--color-watashi-ember)]" title={saveError}>
+          <AlertTriangle className="h-3 w-3" />
+          <span className="hidden sm:inline">Failed to save</span>
+        </span>
+      ) : isSaving ? (
+        <span className="flex items-center gap-1.5 px-2 text-[11px] font-medium text-[var(--color-watashi-text-soft)]">
+          <Save className="h-3 w-3 animate-pulse" />
+          <span className="hidden sm:inline">Saving</span>
+        </span>
+      ) : (
+        <span className="flex items-center gap-1.5 px-2 text-[11px] font-medium text-[var(--color-watashi-emerald)]">
+          <Check className="h-3 w-3" />
+          <span className="hidden sm:inline">Saved</span>
         </span>
       )}
+
+      <div className="h-4 w-px shrink-0 bg-[var(--color-watashi-border)]" />
 
       {/* Export */}
       <button
@@ -91,13 +111,13 @@ export function EditorTopBar({ title, onTitleChange, jobs, isSaving, exportBlock
         onClick={onExport}
         title={exportBlocked ?? undefined}
         className={cx(
-          'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-colors',
+          'flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-bold transition-all',
           exportBlocked
             ? 'cursor-not-allowed bg-[var(--color-watashi-surface-low)] text-[var(--color-watashi-text-soft)]'
-            : 'bg-[var(--color-watashi-indigo)] text-white hover:opacity-90',
+            : 'bg-[var(--color-watashi-indigo)] text-white shadow-[0_2px_10px_-2px_color-mix(in_oklab,var(--color-watashi-indigo)_50%,transparent)] hover:shadow-[0_4px_14px_-2px_color-mix(in_oklab,var(--color-watashi-indigo)_60%,transparent)] active:scale-[0.97]',
         )}
       >
-        <Download className="h-4 w-4" />
+        <Download className="h-3.5 w-3.5" />
         Export
       </button>
     </div>

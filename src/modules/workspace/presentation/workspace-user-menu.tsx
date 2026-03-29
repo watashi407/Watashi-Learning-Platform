@@ -84,7 +84,7 @@ export function WorkspaceUserMenu({
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-64 overflow-hidden rounded-[1.35rem] bg-[var(--color-watashi-surface-card)] shadow-[0_24px_70px_-38px_rgba(15,23,42,0.45)] ring-1 ring-[var(--color-watashi-border)] backdrop-blur-xl">
+        <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-64 overflow-hidden rounded-[1.35rem] bg-[var(--color-watashi-surface-card)] shadow-[var(--shadow-watashi-dropdown)] ring-1 ring-[var(--color-watashi-border)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-200">
           <div className="border-b border-[var(--color-watashi-border)] px-4 py-4">
             <WorkspaceEyebrow>Profile</WorkspaceEyebrow>
             <p className="mt-2 text-sm font-bold text-[var(--color-watashi-text-strong)]">{user.name}</p>
@@ -94,14 +94,14 @@ export function WorkspaceUserMenu({
           <div className="p-2">
             <Link
               to={ROUTE_PATHS.profile}
-              className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-[var(--color-watashi-text-strong)] transition-colors hover:bg-[var(--color-watashi-surface-low)]"
+              className="flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm font-semibold text-[var(--color-watashi-text-strong)] transition-colors hover:bg-[var(--color-watashi-surface-low)] active:bg-[var(--color-watashi-surface-high)]"
             >
               <UserRound className="h-4 w-4 text-[var(--color-watashi-text)]" />
               Profile
             </Link>
             <Link
               to={ROUTE_PATHS.profile}
-              className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-[var(--color-watashi-text-strong)] transition-colors hover:bg-[var(--color-watashi-surface-low)]"
+              className="flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm font-semibold text-[var(--color-watashi-text-strong)] transition-colors hover:bg-[var(--color-watashi-surface-low)] active:bg-[var(--color-watashi-surface-high)]"
             >
               <Settings2 className="h-4 w-4 text-[var(--color-watashi-text)]" />
               Settings
@@ -113,12 +113,12 @@ export function WorkspaceUserMenu({
               type="button"
               onClick={() => void handleLogout()}
               disabled={loggingOut}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-rose-600 transition-colors hover:bg-[color-mix(in_oklab,#fb7185_12%,var(--color-watashi-surface-card))] disabled:cursor-not-allowed disabled:opacity-70"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-sm font-semibold text-[var(--color-watashi-ember)] transition-all duration-200 hover:bg-[color-mix(in_oklab,var(--color-watashi-ember)_12%,var(--color-watashi-surface-card))] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
               Sign out
             </button>
-            {error ? <p className="px-3 pb-2 pt-1 text-[11px] font-medium text-rose-600">{error}</p> : null}
+            {error ? <p className="px-3 pb-2 pt-1 text-[11px] font-medium text-[var(--color-watashi-ember)]">{error}</p> : null}
           </div>
         </div>
       ) : null}

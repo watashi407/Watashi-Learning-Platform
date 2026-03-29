@@ -11,7 +11,7 @@ export function AppearanceSwitcher() {
     <button
       type="button"
       onClick={() => setMode(isDark ? 'light' : 'dark')}
-      className="mt-3 flex w-full items-center justify-between rounded-xl bg-[var(--color-watashi-surface-card)] px-3 py-2.5 text-left shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-watashi-surface-card)_90%,var(--color-watashi-surface-high))]"
+      className="mt-3 flex w-full items-center justify-between rounded-xl bg-[var(--color-watashi-surface-card)] px-3 py-2.5 text-left shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)] transition-all duration-200 hover:bg-[color-mix(in_oklab,var(--color-watashi-surface-card)_90%,var(--color-watashi-surface-high))]"
       aria-pressed={isDark}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
     >
@@ -26,7 +26,7 @@ export function AppearanceSwitcher() {
 
       <span
         className={cx(
-          'relative inline-flex h-6 w-10 items-center rounded-full transition-colors',
+          'relative inline-flex h-6 w-10 items-center rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)] transition-colors',
           isDark ? 'bg-[var(--color-watashi-indigo)]' : 'bg-[var(--color-watashi-surface-high)]',
         )}
       >

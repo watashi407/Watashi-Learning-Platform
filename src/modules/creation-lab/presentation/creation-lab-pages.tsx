@@ -1,15 +1,21 @@
 import { Link } from '@tanstack/react-router'
 import { startTransition, useState } from 'react'
 import {
+  AlertCircle,
   ArrowRight,
+  Award,
+  BookOpen,
   CirclePlay,
   Clapperboard,
+  FileText,
+  HardDrive,
   LayoutTemplate,
   Loader2,
   MicVocal,
   Plus,
-  ShieldCheck,
+  RefreshCw,
   Sparkles,
+  Video,
   Wand2,
 } from 'lucide-react'
 import { resolveCourseOutline } from '../../../features/ai-jobs/client'
@@ -17,14 +23,15 @@ import type { CourseOutlineResult } from '../../../shared/contracts/jobs'
 import { getDisplayErrorMessage } from '../../../shared/errors'
 import {
   courseBuilderModules,
-  creationLabActivity,
   creationLabCards,
-  creationLabHighlights,
   multimediaAssets,
   multimediaTimeline,
 } from '../domain/creation-lab-model'
-import { ProgressTrack, WorkspaceEyebrow, WorkspacePanel } from '../../../shared/ui/workspace'
+import { WorkspaceEyebrow, WorkspacePanel, cx } from '../../../shared/ui/workspace'
 import { ROUTE_PATHS } from '../../../shared/routing/paths'
+import { useEducatorDashboard } from '../hooks/use-educator-dashboard'
+import type { ActivityLogRecord } from '../../../shared/contracts/educator'
+import type { JobRecord } from '../../../shared/contracts/jobs'
 
 type CourseBuilderModule = {
   id: string
@@ -75,84 +82,250 @@ function createCourseBlueprint(outline: CourseOutlineResult): CourseBlueprint {
   }
 }
 
+function formatStorageBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+function formatActivityAction(log: ActivityLogRecord): string {
+  const action = log.action.replace(/_/g, ' ')
+  return `${action.charAt(0).toUpperCase()}${action.slice(1)}`
+}
+
+function formatRelativeTime(isoDate: string): string {
+  const diffMs = Date.now() - new Date(isoDate).getTime()
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+function getJobStatusColor(status: string): string {
+  switch (status) {
+    case 'completed': return 'bg-[color-mix(in_oklab,var(--color-watashi-emerald)_12%,var(--color-watashi-surface-card))] text-[var(--color-watashi-emerald)]'
+    case 'running': return 'bg-[color-mix(in_oklab,var(--color-watashi-indigo)_12%,var(--color-watashi-surface-card))] text-[var(--color-watashi-indigo)]'
+    case 'queued': return 'bg-[color-mix(in_oklab,#d97706_12%,var(--color-watashi-surface-card))] text-[#d97706]'
+    case 'failed': return 'bg-[color-mix(in_oklab,var(--color-watashi-ember)_12%,var(--color-watashi-surface-card))] text-[var(--color-watashi-ember)]'
+    default: return 'bg-[var(--color-watashi-surface-low)] text-[var(--color-watashi-text)]'
+  }
+}
+
+function getModuleIcon(module: string) {
+  switch (module) {
+    case 'course': return BookOpen
+    case 'video': return Video
+    case 'certificate': return Award
+    default: return FileText
+  }
+}
+
 export function CreationLabHubPage() {
+  const { snapshot, isLoading, error, refresh } = useEducatorDashboard()
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <section className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <WorkspaceEyebrow>Workspace</WorkspaceEyebrow>
+            <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.6rem)] font-black leading-[0.9] tracking-[-0.08em] text-[var(--color-watashi-text-strong)]">
+              Your Creation <span className="text-[var(--color-watashi-indigo)]">Lab.</span>
+            </h1>
+          </div>
+        </section>
+        <div className="grid gap-5 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <WorkspacePanel key={i} className="animate-pulse rounded-[1.8rem] p-6">
+              <div className="mb-5 h-12 w-12 rounded-2xl bg-[var(--color-watashi-surface-high)]" />
+              <div className="h-3 w-24 rounded bg-[var(--color-watashi-surface-high)]" />
+              <div className="mt-3 h-8 w-16 rounded bg-[var(--color-watashi-surface-high)]" />
+              <div className="mt-3 h-3 w-36 rounded bg-[var(--color-watashi-surface-high)]" />
+            </WorkspacePanel>
+          ))}
+        </div>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_320px]">
+          <WorkspacePanel className="animate-pulse rounded-[1.75rem]">
+            <div className="h-4 w-28 rounded bg-[var(--color-watashi-surface-high)]" />
+            <div className="mt-6 space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 rounded-[1.4rem] bg-[var(--color-watashi-surface-low)]" />
+              ))}
+            </div>
+          </WorkspacePanel>
+          <WorkspacePanel className="animate-pulse rounded-[1.75rem]">
+            <div className="h-4 w-28 rounded bg-[var(--color-watashi-surface-high)]" />
+            <div className="mt-6 space-y-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-12 rounded-[1.4rem] bg-[var(--color-watashi-surface-low)]" />
+              ))}
+            </div>
+          </WorkspacePanel>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !snapshot) {
+    return (
+      <div className="space-y-8">
+        <section className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <WorkspaceEyebrow>Workspace</WorkspaceEyebrow>
+            <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.6rem)] font-black leading-[0.9] tracking-[-0.08em] text-[var(--color-watashi-text-strong)]">
+              Your Creation <span className="text-[var(--color-watashi-indigo)]">Lab.</span>
+            </h1>
+          </div>
+        </section>
+        <WorkspacePanel className="flex flex-col items-center justify-center py-16 text-center">
+          <AlertCircle className="h-10 w-10 text-[var(--color-watashi-ember)]" />
+          <p className="mt-4 text-sm font-semibold text-[var(--color-watashi-text-strong)]">{error}</p>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-watashi-indigo)] px-5 py-3 text-sm font-bold text-white"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </button>
+        </WorkspacePanel>
+      </div>
+    )
+  }
+
+  const metrics = snapshot?.metrics
+  const recentActivity = snapshot?.recentActivity ?? []
+  const recentJobs = snapshot?.recentJobs ?? []
+
+  const statCards = [
+    { label: 'Total Courses', value: String(metrics?.totalCourses ?? 0), detail: `${metrics?.totalPublishedCourses ?? 0} published`, tone: 'bg-[color-mix(in_oklab,var(--color-watashi-indigo)_12%,var(--color-watashi-surface-card))] text-[var(--color-watashi-indigo)]', icon: BookOpen },
+    { label: 'Video Projects', value: String(metrics?.totalVideoProjects ?? 0), detail: 'Across all projects', tone: 'bg-[color-mix(in_oklab,var(--color-watashi-emerald)_12%,var(--color-watashi-surface-card))] text-[var(--color-watashi-emerald)]', icon: Video },
+    { label: 'Certificates Issued', value: String(metrics?.totalCertificatesIssued ?? 0), detail: `${metrics?.totalCertificateTemplates ?? 0} templates`, tone: 'bg-[color-mix(in_oklab,#d97706_12%,var(--color-watashi-surface-card))] text-[#d97706]', icon: Award },
+  ]
+
   return (
     <div className="space-y-8">
       <section className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-3xl">
           <WorkspaceEyebrow>Workspace</WorkspaceEyebrow>
-          <h1 className="mt-3 font-display text-[clamp(3rem,6vw,4.9rem)] font-black leading-[0.9] tracking-[-0.08em] text-slate-950">
+          <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.6rem)] font-black leading-[0.9] tracking-[-0.08em] text-[var(--color-watashi-text-strong)]">
             Your Creation <span className="text-[var(--color-watashi-indigo)]">Lab.</span>
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-slate-500">
+          <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--color-watashi-text)]">
             Manage your curriculum, edit cinematic lessons, and design official certifications from one educator-grade workspace.
           </p>
         </div>
       </section>
 
+      {/* ── Metrics Row ── */}
+      <div className="grid gap-5 md:grid-cols-3 xl:grid-cols-4">
+        {statCards.map((card) => {
+          const Icon = card.icon
+          return (
+            <WorkspacePanel key={card.label} className="rounded-[1.8rem] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-watashi-card)]">
+              <div className={cx('mb-5 flex h-12 w-12 items-center justify-center rounded-2xl', card.tone)}>
+                <Icon className="h-5 w-5" />
+              </div>
+              <WorkspaceEyebrow>{card.label}</WorkspaceEyebrow>
+              <p className="mt-2 text-[2rem] font-black tracking-[-0.05em] text-[var(--color-watashi-text-strong)]">{card.value}</p>
+              <p className="mt-2 text-sm text-[var(--color-watashi-text)]">{card.detail}</p>
+            </WorkspacePanel>
+          )
+        })}
+        <WorkspacePanel className="rounded-[1.8rem] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-watashi-card)]">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-watashi-surface-low)] text-[var(--color-watashi-text)]">
+            <HardDrive className="h-5 w-5" />
+          </div>
+          <WorkspaceEyebrow>Drafts / Storage</WorkspaceEyebrow>
+          <p className="mt-2 text-[2rem] font-black tracking-[-0.05em] text-[var(--color-watashi-text-strong)]">{metrics?.totalDraftItems ?? 0}</p>
+          <p className="mt-2 text-sm text-[var(--color-watashi-text)]">{formatStorageBytes(metrics?.storageBytes ?? 0)} used</p>
+        </WorkspacePanel>
+      </div>
+
+      {/* ── Quick Actions + Activity ── */}
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_320px]">
-        <WorkspacePanel className="overflow-hidden bg-[radial-gradient(circle_at_top_right,color-mix(in_oklab,var(--color-watashi-indigo)_16%,transparent),transparent_36%),linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-surface-card)_96%,white),var(--color-watashi-surface-card))]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <span className="inline-flex rounded-full bg-[var(--color-watashi-primary-fixed)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-[var(--color-watashi-emerald)]">
-                {creationLabHighlights[0].label}
-              </span>
-              <h2 className="mt-5 font-display text-[2.55rem] font-black leading-tight tracking-[-0.06em] text-slate-950">
-                {creationLabHighlights[0].title}
-              </h2>
-              <p className="mt-4 text-sm leading-7 text-slate-500">{creationLabHighlights[0].detail}</p>
-            </div>
-            <Link
-              to={ROUTE_PATHS.creationLabCourseBuilder}
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--color-watashi-surface-low)] text-[var(--color-watashi-text-strong)] transition-colors hover:bg-[var(--color-watashi-indigo)] hover:text-white"
-            >
-              <ArrowRight className="h-5 w-5" />
-            </Link>
-          </div>
-
-          <div className="mt-10">
-            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
-              <span>Course progress</span>
-              <span>{creationLabHighlights[0].progress}%</span>
-            </div>
-            <ProgressTrack value={creationLabHighlights[0].progress} className="mt-3" />
-          </div>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <WorkspacePanel className="overflow-hidden bg-[radial-gradient(circle_at_top_right,color-mix(in_oklab,var(--color-watashi-indigo)_16%,transparent),transparent_36%),linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-surface-card)_96%,transparent),var(--color-watashi-surface-card))]">
+          <WorkspaceEyebrow>Quick actions</WorkspaceEyebrow>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             {creationLabCards.map((card) => (
-              <Link key={card.title} to={card.path} className="rounded-[1.7rem] bg-[var(--color-watashi-surface-low)] px-5 py-5 transition-colors hover:bg-[var(--color-watashi-surface-high)]">
+              <Link key={card.title} to={card.path} className="rounded-[1.7rem] bg-[var(--color-watashi-surface-low)] px-5 py-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-watashi-card)] hover:bg-[var(--color-watashi-surface-high)]">
                 <WorkspaceEyebrow>{card.title}</WorkspaceEyebrow>
-                <p className="mt-3 text-sm text-slate-500">{card.detail}</p>
+                <p className="mt-3 text-sm text-[var(--color-watashi-text)]">{card.detail}</p>
               </Link>
             ))}
+          </div>
+
+          <div className="mt-8">
+            <WorkspaceEyebrow>Recent activity</WorkspaceEyebrow>
+            <div className="mt-4 space-y-3">
+              {recentActivity.length === 0 ? (
+                <p className="py-4 text-sm text-[var(--color-watashi-text-soft)]">No recent activity yet. Start creating to see updates here.</p>
+              ) : (
+                recentActivity.slice(0, 6).map((log) => {
+                  const ModuleIcon = getModuleIcon(log.module)
+                  return (
+                    <div key={log.id} className="flex items-center gap-3 rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-watashi-primary-fixed)] text-[var(--color-watashi-emerald)]">
+                        <ModuleIcon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[var(--color-watashi-text-strong)]">
+                          {formatActivityAction(log)}
+                          {log.entityType ? ` (${log.entityType})` : ''}
+                        </p>
+                        <p className="text-xs text-[var(--color-watashi-text-soft)]">{log.module} &middot; {formatRelativeTime(log.createdAt)}</p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </div>
         </WorkspacePanel>
 
         <div className="space-y-6">
           <WorkspacePanel className="bg-[linear-gradient(180deg,var(--color-watashi-indigo),#6f63ff)] text-white">
-            <WorkspaceEyebrow className="text-white/65">{creationLabHighlights[1].label}</WorkspaceEyebrow>
-            <h2 className="mt-3 font-display text-[2rem] font-black tracking-[-0.05em]">{creationLabHighlights[1].title}</h2>
-            <p className="mt-4 text-sm leading-7 text-white/78">{creationLabHighlights[1].detail}</p>
-            <div className="mt-8 rounded-[1.5rem] bg-white/10 px-4 py-4">
-              <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-[0.22em] text-white/65">
-                <span>Render queue</span>
-                <span>{creationLabHighlights[1].progress}%</span>
-              </div>
-              <ProgressTrack value={creationLabHighlights[1].progress} className="mt-3 bg-white/20" />
-            </div>
+            <WorkspaceEyebrow className="text-white/65">Quick start</WorkspaceEyebrow>
+            <h2 className="mt-3 font-display text-[2rem] font-black tracking-[-0.05em]">Jump into a builder</h2>
+            <p className="mt-4 text-sm leading-7 text-white/78">
+              Create courses, record videos, or design certificates from your educator workspace.
+            </p>
             <Link
               to={ROUTE_PATHS.creationLabVideo}
               className="mt-6 inline-flex rounded-full bg-white px-5 py-3 text-sm font-bold text-[var(--color-watashi-indigo)]"
             >
-              Open Editor
+              Open Video Editor
             </Link>
           </WorkspacePanel>
 
+          {recentJobs.length > 0 && (
+            <WorkspacePanel>
+              <WorkspaceEyebrow>Recent jobs</WorkspaceEyebrow>
+              <div className="mt-4 space-y-3">
+                {recentJobs.slice(0, 5).map((job: JobRecord) => (
+                  <div key={job.id} className="flex items-center justify-between rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--color-watashi-text-strong)]">{job.type.replace(/-/g, ' ')}</p>
+                      <p className="text-xs text-[var(--color-watashi-text-soft)]">{formatRelativeTime(job.updatedAt)}</p>
+                    </div>
+                    <span className={cx('shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em]', getJobStatusColor(job.status))}>
+                      {job.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </WorkspacePanel>
+          )}
+
           <WorkspacePanel className="bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-surface-card)_97%,white),color-mix(in_oklab,var(--color-watashi-indigo)_5%,var(--color-watashi-surface-low)))]">
             <WorkspaceEyebrow>AI Course Blueprinting</WorkspaceEyebrow>
-            <h2 className="mt-3 font-display text-[1.8rem] font-black tracking-[-0.05em] text-slate-950">Generate the next build</h2>
-            <p className="mt-4 text-sm leading-7 text-slate-500">
-              Outline modules, align certificate packs, and prepare media assets without collapsing everything into a single page file.
+            <h2 className="mt-3 font-display text-[1.8rem] font-black tracking-[-0.05em] text-[var(--color-watashi-text-strong)]">Generate the next build</h2>
+            <p className="mt-4 text-sm leading-7 text-[var(--color-watashi-text)]">
+              Outline modules, align certificate packs, and prepare media assets from a single prompt.
             </p>
             <Link
               to={ROUTE_PATHS.creationLabCourseBuilder}
@@ -163,39 +336,6 @@ export function CreationLabHubPage() {
             </Link>
           </WorkspacePanel>
         </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <WorkspacePanel>
-          <WorkspaceEyebrow>Recent activity</WorkspaceEyebrow>
-          <div className="mt-6 space-y-4">
-            {creationLabActivity.map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-watashi-primary-fixed)] text-[var(--color-watashi-emerald)]">
-                  <ShieldCheck className="h-4 w-4" />
-                </span>
-                <span className="text-sm font-medium text-slate-700">{item}</span>
-              </div>
-            ))}
-          </div>
-        </WorkspacePanel>
-
-        <WorkspacePanel className="overflow-hidden bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-surface-card)_96%,white),color-mix(in_oklab,var(--color-watashi-ember)_8%,var(--color-watashi-surface-low)))]">
-          <WorkspaceEyebrow>Certificate creation</WorkspaceEyebrow>
-          <h2 className="mt-3 font-display text-[1.8rem] font-black tracking-[-0.05em] text-slate-950">Credential preview</h2>
-          <div className="mt-6 rounded-[2rem] bg-[linear-gradient(180deg,color-mix(in_oklab,#fbfaf7_88%,var(--color-watashi-surface-card)),color-mix(in_oklab,#f0eee8_78%,var(--color-watashi-surface-low)))] p-6 shadow-[0_28px_60px_-48px_rgba(18,32,43,0.45)]">
-            <p className="text-center text-sm text-slate-500">This certifies that</p>
-            <p className="mt-5 text-center font-display text-[2rem] font-black tracking-[-0.05em] text-slate-950">The Learner Name</p>
-            <p className="mt-4 text-center text-sm leading-7 text-slate-500">has successfully completed Applied AI Systems Mastery.</p>
-          </div>
-          <Link
-            to={ROUTE_PATHS.creationLabCertificateBuilder}
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--color-watashi-emerald)] px-5 py-3 text-sm font-bold text-white"
-          >
-            Configure signature
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </WorkspacePanel>
       </section>
     </div>
   )
@@ -238,7 +378,7 @@ export function CourseBuilderPage() {
     <div className="grid min-h-[calc(100vh-10rem)] gap-6 xl:grid-cols-[280px_minmax(0,1fr)_280px]">
       <WorkspacePanel className="rounded-[1.75rem] bg-[var(--color-watashi-surface-low)] p-5">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-[1.35rem] font-black tracking-[-0.04em] text-slate-950">Curriculum</h2>
+          <h2 className="font-display text-[1.35rem] font-black tracking-[-0.04em] text-[var(--color-watashi-text-strong)]">Curriculum</h2>
           <button type="button" className="text-[var(--color-watashi-indigo)]">
             <Plus className="h-4 w-4" />
           </button>
@@ -252,9 +392,9 @@ export function CourseBuilderPage() {
               className={`block w-full rounded-[1.5rem] px-4 py-4 text-left transition-colors ${activeModule?.id === module.id ? 'bg-[var(--color-watashi-surface-card)] shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)]' : 'bg-transparent hover:bg-[var(--color-watashi-surface-card)]/70'}`}
             >
               <WorkspaceEyebrow>Module {module.id}</WorkspaceEyebrow>
-              <h3 className="mt-2 font-bold text-slate-900">{module.title}</h3>
+              <h3 className="mt-2 font-bold text-[var(--color-watashi-text-strong)]">{module.title}</h3>
               {module.items.length > 0 ? (
-                <ul className="mt-4 space-y-2 text-sm text-slate-500">
+                <ul className="mt-4 space-y-2 text-sm text-[var(--color-watashi-text)]">
                   {module.items.map((item) => (
                     <li key={item} className="flex items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-watashi-indigo)]" />
@@ -266,14 +406,14 @@ export function CourseBuilderPage() {
             </button>
           ))}
         </div>
-        <div className="mt-6 rounded-[1.6rem] border border-[color-mix(in_oklab,var(--color-watashi-indigo)_18%,var(--color-watashi-border))] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-indigo)_10%,white),color-mix(in_oklab,var(--color-watashi-surface-card)_98%,white))] p-4">
+        <div className="mt-6 rounded-[1.6rem] border border-[color-mix(in_oklab,var(--color-watashi-indigo)_18%,var(--color-watashi-border))] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-indigo)_10%,var(--color-watashi-surface-card)),color-mix(in_oklab,var(--color-watashi-surface-card)_98%,transparent))] p-4">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-watashi-indigo)] text-white shadow-[0_18px_40px_-26px_rgba(75,65,225,0.55)]">
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--color-watashi-indigo)]">AI Course Assistant</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
+              <p className="mt-1 text-xs leading-5 text-[var(--color-watashi-text)]">
                 {isRunningPrompt ? 'Running prompt and refreshing the module rail.' : `Blueprint ready for ${courseBlueprint.modules.length} modules.`}
               </p>
             </div>
@@ -282,24 +422,24 @@ export function CourseBuilderPage() {
       </WorkspacePanel>
 
       <WorkspacePanel className="rounded-[1.75rem]">
-        <nav className="flex items-center gap-2 text-xs font-medium text-slate-400">
+        <nav className="flex items-center gap-2 text-xs font-medium text-[var(--color-watashi-text-soft)]">
           <span>My Courses</span>
           <ArrowRight className="h-3.5 w-3.5" />
           <span>{courseBlueprint.title}</span>
           <ArrowRight className="h-3.5 w-3.5" />
-          <span className="text-slate-500">{activeModule?.title}</span>
+          <span className="text-[var(--color-watashi-text)]">{activeModule?.title}</span>
         </nav>
-        <div className="mt-6 rounded-[1.9rem] bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-watashi-primary-fixed)_78%,white),color-mix(in_oklab,var(--color-watashi-surface-low)_86%,white))] p-6 ring-1 ring-[color-mix(in_oklab,var(--color-watashi-indigo)_16%,var(--color-watashi-border))]">
+        <div className="mt-6 rounded-[1.9rem] bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-watashi-primary-fixed)_78%,var(--color-watashi-surface-card)),color-mix(in_oklab,var(--color-watashi-surface-low)_86%,var(--color-watashi-surface-card)))] p-6 ring-1 ring-[color-mix(in_oklab,var(--color-watashi-indigo)_16%,var(--color-watashi-border))]">
           <WorkspaceEyebrow className="text-[var(--color-watashi-indigo)]">Course blueprint</WorkspaceEyebrow>
           <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <h1 className="font-display text-[clamp(2.6rem,5vw,3.8rem)] font-black tracking-[-0.06em] text-slate-950">
+              <h1 className="font-display text-[clamp(2.4rem,5vw,3.6rem)] font-black tracking-[-0.06em] text-[var(--color-watashi-text-strong)]">
                 {activeModule?.title}
               </h1>
-              <p className="mt-4 text-sm leading-7 text-slate-500">{courseBlueprint.summary}</p>
+              <p className="mt-4 text-sm leading-7 text-[var(--color-watashi-text)]">{courseBlueprint.summary}</p>
             </div>
-            <div className="rounded-[1.4rem] bg-white/72 px-4 py-4 shadow-[var(--shadow-watashi-panel)] ring-1 ring-white/70">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Modules planned</p>
+            <div className="rounded-[1.4rem] bg-[color-mix(in_oklab,var(--color-watashi-surface-card)_72%,transparent)] px-4 py-4 shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)]">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[var(--color-watashi-text-soft)]">Modules planned</p>
               <p className="mt-2 text-3xl font-black text-[var(--color-watashi-indigo)]">{courseBlueprint.modules.length}</p>
             </div>
           </div>
@@ -311,14 +451,14 @@ export function CourseBuilderPage() {
               <span className="sr-only">Lesson abstract</span>
               <textarea
                 key={activeModule?.id}
-                className="min-h-32 w-full resize-none rounded-[1.3rem] border-none bg-[var(--color-watashi-surface-card)] px-4 py-4 text-sm leading-7 text-slate-600 outline-none ring-1 ring-[var(--color-watashi-border)]"
+                className="min-h-32 w-full resize-none rounded-[1.3rem] border-none bg-[var(--color-watashi-surface-card)] px-4 py-4 text-sm leading-7 text-[var(--color-watashi-text)] outline-none ring-1 ring-[var(--color-watashi-border)]"
                 defaultValue={activeModule?.detail}
               />
             </label>
           </div>
           <WorkspacePanel className="rounded-[1.7rem] bg-[var(--color-watashi-surface-low)] p-5">
             <WorkspaceEyebrow>Lesson controls</WorkspaceEyebrow>
-            <div className="mt-4 flex gap-3 text-slate-500">
+            <div className="mt-4 flex gap-3 text-[var(--color-watashi-text)]">
               <button
                 type="button"
                 className="rounded-full bg-[var(--color-watashi-surface-card)] px-3 py-2 ring-1 ring-[var(--color-watashi-border)]"
@@ -351,7 +491,7 @@ export function CourseBuilderPage() {
 
         <div className="mt-8 rounded-[1.75rem] bg-[var(--color-watashi-surface-low)] px-5 py-5">
           <WorkspaceEyebrow>Lesson content</WorkspaceEyebrow>
-          <p className="mt-4 text-sm leading-7 text-slate-500">
+          <p className="mt-4 text-sm leading-7 text-[var(--color-watashi-text)]">
             {activeModule?.detail}
           </p>
         </div>
@@ -384,7 +524,7 @@ export function CourseBuilderPage() {
           </button>
           <div aria-live="polite" className="mt-4 min-h-10 text-sm">
             {assistantError ? (
-              <p className="font-semibold text-rose-200">{assistantError}</p>
+              <p className="font-semibold text-[color-mix(in_oklab,var(--color-watashi-ember)_60%,white)]">{assistantError}</p>
             ) : (
               <p className="text-white/72">
                 {isRunningPrompt
@@ -414,7 +554,7 @@ export function CourseBuilderPage() {
                 </div>
                 <div className="px-4 py-4">
                   <WorkspaceEyebrow>{asset.label}</WorkspaceEyebrow>
-                  <p className="mt-2 text-sm font-bold text-slate-900">{asset.name}</p>
+                  <p className="mt-2 text-sm font-bold text-[var(--color-watashi-text-strong)]">{asset.name}</p>
                 </div>
               </div>
             ))}
@@ -438,7 +578,7 @@ export function MultimediaEditorPage() {
             </div>
           </div>
           <div className="flex items-center justify-between border-t border-[var(--color-watashi-border)] px-6 py-4">
-            <div className="flex items-center gap-3 text-slate-500">
+            <div className="flex items-center gap-3 text-[var(--color-watashi-text)]">
               <button type="button">
                 <CirclePlay className="h-5 w-5" />
               </button>
@@ -449,12 +589,12 @@ export function MultimediaEditorPage() {
                 <MicVocal className="h-5 w-5" />
               </button>
             </div>
-            <div className="font-mono text-sm font-bold text-slate-500">00:04:12:24 / 00:12:45:00</div>
+            <div className="font-mono text-sm font-bold text-[var(--color-watashi-text)]">00:04:12:24 / 00:12:45:00</div>
           </div>
         </WorkspacePanel>
 
         <WorkspacePanel className="rounded-[2rem]">
-          <div className="grid grid-cols-2 gap-2 rounded-full bg-[var(--color-watashi-surface-low)] p-1 text-[11px] font-bold text-slate-500">
+          <div className="grid grid-cols-2 gap-2 rounded-full bg-[var(--color-watashi-surface-low)] p-1 text-[11px] font-bold text-[var(--color-watashi-text)]">
             <span className="rounded-full bg-[var(--color-watashi-surface-card)] px-3 py-2 text-center text-[var(--color-watashi-indigo)] shadow-[var(--shadow-watashi-panel)] ring-1 ring-[var(--color-watashi-border)]">
               Video Assets
             </span>
@@ -464,7 +604,7 @@ export function MultimediaEditorPage() {
             {multimediaAssets.map((asset) => (
               <div key={asset.name} className="overflow-hidden rounded-[1.35rem] bg-[var(--color-watashi-surface-low)]">
                 <img alt={asset.name} className="aspect-square h-auto w-full object-cover" src={asset.preview} />
-                <p className="px-3 py-3 text-xs font-bold text-slate-700">{asset.name}</p>
+                <p className="px-3 py-3 text-xs font-bold text-[var(--color-watashi-text-strong)]">{asset.name}</p>
               </div>
             ))}
           </div>
@@ -477,7 +617,7 @@ export function MultimediaEditorPage() {
             ].map((item) => {
               const Icon = item.icon
               return (
-                <div key={item.label} className="flex items-center gap-3 rounded-full bg-[var(--color-watashi-surface-low)] px-4 py-3 text-sm font-bold text-slate-600">
+                <div key={item.label} className="flex items-center gap-3 rounded-full bg-[var(--color-watashi-surface-low)] px-4 py-3 text-sm font-bold text-[var(--color-watashi-text)]">
                   <Icon className="h-4 w-4" />
                   {item.label}
                 </div>
@@ -489,7 +629,7 @@ export function MultimediaEditorPage() {
 
       <WorkspacePanel className="rounded-[2rem]">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-[1.8rem] font-black tracking-[-0.05em] text-slate-950">Timeline</h2>
+          <h2 className="font-display text-[1.8rem] font-black tracking-[-0.05em] text-[var(--color-watashi-text-strong)]">Timeline</h2>
           <button type="button" className="text-sm font-bold text-[var(--color-watashi-indigo)]">
             Auto-save active
           </button>
@@ -498,10 +638,10 @@ export function MultimediaEditorPage() {
           {multimediaTimeline.map((track, index) => (
             <div key={track.name} className="grid gap-3 rounded-[1.6rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 md:grid-cols-[90px_minmax(0,1fr)_90px] md:items-center">
               <WorkspaceEyebrow>{track.label}</WorkspaceEyebrow>
-              <div className={`rounded-[1.2rem] px-4 py-3 text-sm font-semibold ${index === 0 ? 'bg-[color-mix(in_oklab,var(--color-watashi-emerald)_18%,white)] text-slate-800' : index === 1 ? 'bg-[color-mix(in_oklab,var(--color-watashi-indigo)_14%,white)] text-slate-800' : 'bg-[color-mix(in_oklab,var(--color-watashi-ember)_16%,white)] text-slate-800'}`}>
+              <div className={`rounded-[1.2rem] px-4 py-3 text-sm font-semibold ${index === 0 ? 'bg-[color-mix(in_oklab,var(--color-watashi-emerald)_18%,var(--color-watashi-surface-card))] text-[var(--color-watashi-text-strong)]' : index === 1 ? 'bg-[color-mix(in_oklab,var(--color-watashi-indigo)_14%,var(--color-watashi-surface-card))] text-[var(--color-watashi-text-strong)]' : 'bg-[color-mix(in_oklab,var(--color-watashi-ember)_16%,var(--color-watashi-surface-card))] text-[var(--color-watashi-text-strong)]'}`}>
                 {track.name}
               </div>
-              <div className="text-right text-xs font-bold uppercase tracking-[0.22em] text-slate-400">{track.span}</div>
+              <div className="text-right text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-watashi-text-soft)]">{track.span}</div>
             </div>
           ))}
         </div>
@@ -513,10 +653,10 @@ export function MultimediaEditorPage() {
 export function VideoCreationPage() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_320px]">
-      <WorkspacePanel className="overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-surface-card)_96%,white),color-mix(in_oklab,var(--color-watashi-surface-low)_92%,white))]">
+      <WorkspacePanel className="overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-surface-card)_96%,transparent),color-mix(in_oklab,var(--color-watashi-surface-low)_92%,white))]">
         <WorkspaceEyebrow>Video creation</WorkspaceEyebrow>
-        <h1 className="mt-3 font-display text-[2.8rem] font-black tracking-[-0.06em] text-slate-950">Narratives with motion discipline</h1>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-500">
+        <h1 className="mt-3 font-display text-[2.8rem] font-black tracking-[-0.06em] text-[var(--color-watashi-text-strong)]">Narratives with motion discipline</h1>
+        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-watashi-text)]">
           Use the multimedia editor for precision work, then return here for batch render status, reusable templates, and media organization.
         </p>
         <div className="mt-8 aspect-[16/9] overflow-hidden rounded-[1.8rem]">
@@ -534,9 +674,9 @@ export function VideoCreationPage() {
         <WorkspacePanel className="rounded-[2rem]">
           <WorkspaceEyebrow>Template packs</WorkspaceEyebrow>
           <div className="mt-5 space-y-3">
-            <div className="rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-slate-700">Lecture intro system</div>
-            <div className="rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-slate-700">Case-study lower thirds</div>
-            <div className="rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-slate-700">Cohort recap montage</div>
+            <div className="rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-[var(--color-watashi-text-strong)]">Lecture intro system</div>
+            <div className="rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-[var(--color-watashi-text-strong)]">Case-study lower thirds</div>
+            <div className="rounded-[1.4rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-[var(--color-watashi-text-strong)]">Cohort recap montage</div>
           </div>
         </WorkspacePanel>
       </div>
@@ -549,10 +689,10 @@ export function CertificateBuilderPage() {
     <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
       <WorkspacePanel className="rounded-[2rem]">
         <WorkspaceEyebrow>Certificate creation</WorkspaceEyebrow>
-        <h1 className="mt-3 font-display text-[2.3rem] font-black tracking-[-0.05em] text-slate-950">Credential system</h1>
+        <h1 className="mt-3 font-display text-[2.3rem] font-black tracking-[-0.05em] text-[var(--color-watashi-text-strong)]">Credential system</h1>
         <div className="mt-6 space-y-4">
           {['Gold framed layout', 'Handwritten signature', 'Completion seal', 'Cohort badge'].map((item) => (
-            <label key={item} className="flex items-center justify-between rounded-[1.5rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-slate-700">
+            <label key={item} className="flex items-center justify-between rounded-[1.5rem] bg-[var(--color-watashi-surface-low)] px-4 py-4 text-sm font-semibold text-[var(--color-watashi-text-strong)]">
               <span>{item}</span>
               <span className="h-5 w-5 rounded-full border border-[var(--color-watashi-border)] bg-[var(--color-watashi-surface-card)]" />
             </label>
@@ -563,15 +703,15 @@ export function CertificateBuilderPage() {
         </button>
       </WorkspacePanel>
 
-      <WorkspacePanel className="rounded-[2rem] bg-[linear-gradient(180deg,color-mix(in_oklab,#fbfaf7_86%,var(--color-watashi-surface-card)),color-mix(in_oklab,#f0eee8_76%,var(--color-watashi-surface-low)))]">
+      <WorkspacePanel className="rounded-[2rem] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-watashi-surface-card)_86%,transparent),color-mix(in_oklab,#f0eee8_76%,var(--color-watashi-surface-low)))]">
         <div className="mx-auto max-w-3xl rounded-[2rem] bg-[color-mix(in_oklab,var(--color-watashi-surface-card)_72%,white)] p-10 shadow-[0_36px_80px_-56px_rgba(18,32,43,0.45)]">
           <WorkspaceEyebrow>Certificate preview</WorkspaceEyebrow>
-          <p className="mt-10 text-center text-base text-slate-500">This certifies that</p>
-          <p className="mt-6 text-center font-display text-[3rem] font-black tracking-[-0.06em] text-slate-950">The Learner Name</p>
-          <p className="mt-5 text-center text-base leading-8 text-slate-500">
+          <p className="mt-10 text-center text-base text-[var(--color-watashi-text)]">This certifies that</p>
+          <p className="mt-6 text-center font-display text-[3rem] font-black tracking-[-0.06em] text-[var(--color-watashi-text-strong)]">The Learner Name</p>
+          <p className="mt-5 text-center text-base leading-8 text-[var(--color-watashi-text)]">
             has successfully completed Applied AI Systems Mastery with distinction in strategic interface design.
           </p>
-          <div className="mt-14 flex items-end justify-between text-sm font-semibold text-slate-500">
+          <div className="mt-14 flex items-end justify-between text-sm font-semibold text-[var(--color-watashi-text)]">
             <span>Watashi Learn</span>
             <span>Official seal</span>
           </div>

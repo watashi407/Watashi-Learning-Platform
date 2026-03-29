@@ -1,0 +1,24 @@
+
+> watashi-learn@ dev C:\Users\hyper\Desktop\Watashi Learn
+> vite dev
+
+Port 3000 is in use, trying another one...
+
+  [32m[1mVITE[22m v7.3.1[39m  [2mready in [0m[1m8020[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m3001[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[vite] connected.
+[2m9:52:04 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles.css?direct, /src/modules/video-creation/pages/VideoCreationPage.tsx, /src/modules/video-creation/components/EditorTimeline.tsx, /src/modules/video-creation/components/EditorCanvas.tsx[22m
+[2m9:52:04 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/modules/video-creation/services/editorHelpers.ts[22m
+[vite] program reload
+[2m9:52:46 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles.css?direct, /src/modules/video-creation/components/EditorCanvas.tsx[22m
+[2m9:52:46 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/modules/video-creation/components/EditorCanvas.tsx[22m
+[vite] program reload
+[2m9:53:03 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles.css?direct, /src/modules/video-creation/components/EditorCanvas.tsx[22m
+[2m9:53:03 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/modules/video-creation/components/EditorCanvas.tsx[22m
+[2m9:53:16 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles.css?direct, /src/modules/video-creation/pages/VideoCreationPage.tsx[22m
+[2m9:53:16 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/modules/video-creation/pages/VideoCreationPage.tsx[22m
+[2m9:53:41 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles.css?direct, /src/modules/video-creation/components/EditorCanvas.tsx[22m
+[2m9:53:41 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/modules/video-creation/components/EditorCanvas.tsx[22m

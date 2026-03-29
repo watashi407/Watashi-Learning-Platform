@@ -46,6 +46,28 @@ export async function readVideoDuration(file: File) {
   })
 }
 
+export async function readAudioDuration(file: File) {
+  const objectUrl = URL.createObjectURL(file)
+
+  return await new Promise<number>((resolve, reject) => {
+    const audio = document.createElement('audio')
+    audio.preload = 'metadata'
+
+    audio.onloadedmetadata = () => {
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 0
+      URL.revokeObjectURL(objectUrl)
+      resolve(duration)
+    }
+
+    audio.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('We could not inspect that audio file. Please try MP3, WAV, or WebM audio.'))
+    }
+
+    audio.src = objectUrl
+  })
+}
+
 export function validateVideoUpload(file: File, durationSeconds: number, policy = videoUploadPolicy): UploadValidationResult {
   const errors: string[] = []
 
@@ -53,7 +75,7 @@ export function validateVideoUpload(file: File, durationSeconds: number, policy 
     errors.push(`File exceeds the current upload limit of ${formatBytes(policy.maxFileSizeBytes)}.`)
   }
 
-  if (durationSeconds < policy.minDurationSeconds) {
+  if (policy.minDurationSeconds > 0 && durationSeconds < policy.minDurationSeconds) {
     errors.push(`Video must be at least ${formatDuration(policy.minDurationSeconds)} long.`)
   }
 
