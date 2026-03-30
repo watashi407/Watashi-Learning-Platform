@@ -36,6 +36,12 @@ type TimelineDurationInput = {
   minimumDurationSeconds?: number
 }
 
+export type PreviewPlaybackWindow = {
+  timelineStartSeconds: number
+  mediaOffsetSeconds: number
+  timelineEndSeconds?: number
+}
+
 function readFileNameLike(input: unknown) {
   if (typeof input === 'string') {
     return input
@@ -246,6 +252,73 @@ export function computeTimelineDuration(input: TimelineDurationInput) {
     getTimelineRangeEnd(input.videoTimelineClips),
     getTimelineRangeEnd(input.imageOverlays),
     input.minimumDurationSeconds ?? 30,
+  )
+}
+
+export function createPreviewPlaybackWindow(
+  currentTime: number,
+  activeRange?: { startSeconds: number; endSeconds: number } | null,
+): PreviewPlaybackWindow {
+  if (!activeRange) {
+    return {
+      timelineStartSeconds: 0,
+      mediaOffsetSeconds: Math.max(0, currentTime),
+    }
+  }
+
+  return {
+    timelineStartSeconds: activeRange.startSeconds,
+    mediaOffsetSeconds: Math.max(0, currentTime - activeRange.startSeconds),
+    timelineEndSeconds: activeRange.endSeconds,
+  }
+}
+
+export function getPreviewMediaDuration(
+  playbackWindow: PreviewPlaybackWindow,
+  mediaDurationSeconds: number | null | undefined,
+) {
+  const clipDuration = Number.isFinite(playbackWindow.timelineEndSeconds)
+    ? Math.max(0, Number(playbackWindow.timelineEndSeconds) - playbackWindow.timelineStartSeconds)
+    : null
+
+  if (!Number.isFinite(mediaDurationSeconds) || !mediaDurationSeconds || mediaDurationSeconds <= 0) {
+    return clipDuration
+  }
+
+  if (!Number.isFinite(clipDuration) || clipDuration === null) {
+    return mediaDurationSeconds
+  }
+
+  return Math.min(mediaDurationSeconds, clipDuration)
+}
+
+export function mapPreviewMediaTimeToTimelineTime(
+  playbackWindow: PreviewPlaybackWindow,
+  mediaCurrentTime: number,
+  totalDuration: number,
+) {
+  const unclampedTimelineTime = playbackWindow.timelineStartSeconds + Math.max(0, mediaCurrentTime)
+  const maxTimelineTime = Math.min(
+    totalDuration > 0 ? totalDuration : Number.POSITIVE_INFINITY,
+    Number.isFinite(playbackWindow.timelineEndSeconds)
+      ? Number(playbackWindow.timelineEndSeconds)
+      : Number.POSITIVE_INFINITY,
+  )
+
+  return Math.min(Math.max(playbackWindow.timelineStartSeconds, unclampedTimelineTime), maxTimelineTime)
+}
+
+export function getPreviewRestartTime(playbackWindow: PreviewPlaybackWindow) {
+  return playbackWindow.timelineStartSeconds
+}
+
+export function isPreviewPlaybackWindowAtEnd(
+  playbackWindow: PreviewPlaybackWindow,
+  mediaDurationSeconds: number | null | undefined,
+) {
+  return isMediaOffsetAtEnd(
+    playbackWindow.mediaOffsetSeconds,
+    getPreviewMediaDuration(playbackWindow, mediaDurationSeconds),
   )
 }
 

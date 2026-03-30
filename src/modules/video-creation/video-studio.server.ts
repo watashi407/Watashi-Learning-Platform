@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import ffmpegPath from 'ffmpeg-static'
+import ffmpegStatic from 'ffmpeg-static'
+import ffprobeStatic from 'ffprobe-static'
 import { ensureProfileProvisioned } from '../../features/auth/auth.server'
 import { createJob, updateJob } from '../../lib/backend/jobs'
 import { createServiceSupabaseClient } from '../../lib/supabase/server'
@@ -120,6 +122,15 @@ type StorageBuckets = {
   rendered: string
   subtitles: string
   thumbnails: string
+}
+
+type MediaKind = 'video' | 'audio'
+
+type ProbedMediaFile = {
+  durationSeconds: number
+  hasVideoStream: boolean
+  hasAudioStream: boolean
+  mediaKind: MediaKind
 }
 
 type UploadSessionState = {
@@ -318,13 +329,43 @@ function toWebVttTimestamp(label: string) {
   return `${label}.000`
 }
 
-function parseDurationFromFfmpeg(output: string) {
-  const match = output.match(/Duration:\s(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)/)
-  if (!match) {
-    return null
+function normalizeBinaryPath(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value
   }
 
-  return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
+  if (value && typeof value === 'object') {
+    const candidate = value as { path?: unknown; default?: unknown }
+    if (typeof candidate.path === 'string' && candidate.path.trim().length > 0) {
+      return candidate.path
+    }
+
+    if ('default' in candidate) {
+      return normalizeBinaryPath(candidate.default)
+    }
+  }
+
+  return null
+}
+
+function getPackagedBinaryPath(binary: 'ffmpeg' | 'ffprobe') {
+  return binary === 'ffmpeg'
+    ? normalizeBinaryPath(ffmpegStatic)
+    : normalizeBinaryPath(ffprobeStatic)
+}
+
+function resolveMediaBinaryPath(binary: 'ffmpeg' | 'ffprobe') {
+  const env = getServerEnv()
+  const configuredPath = binary === 'ffmpeg' ? env.FFMPEG_PATH : env.FFPROBE_PATH
+  const candidatePath = configuredPath ?? getPackagedBinaryPath(binary)
+
+  if (!candidatePath || !existsSync(candidatePath)) {
+    throw new AppError('SERVICE_UNAVAILABLE', 'Media processing tools are not available right now.', {
+      details: { binary },
+    })
+  }
+
+  return candidatePath
 }
 
 function formatDurationLabel(durationSeconds: number) {
@@ -340,13 +381,10 @@ function formatDurationLabel(durationSeconds: number) {
   return `${minutes}m ${String(seconds).padStart(2, '0')}s`
 }
 
-async function runFfmpeg(args: string[], allowFailure = false) {
-  if (!ffmpegPath) {
-    throw new AppError('SERVICE_UNAVAILABLE', 'Video processing tools are not available right now.')
-  }
-
+async function runMediaBinary(binary: 'ffmpeg' | 'ffprobe', args: string[], allowFailure = false) {
+  const binaryPath = resolveMediaBinaryPath(binary)
   return await new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve, reject) => {
-    const child = spawn(ffmpegPath, args, {
+    const child = spawn(binaryPath, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     })
@@ -362,11 +400,16 @@ async function runFfmpeg(args: string[], allowFailure = false) {
       stderr += chunk.toString()
     })
 
-    child.on('error', reject)
+    child.on('error', (error) => {
+      reject(new AppError('SERVICE_UNAVAILABLE', 'Media processing tools are not available right now.', {
+        cause: error,
+        details: { binary },
+      }))
+    })
     child.on('close', (code) => {
       const exitCode = code ?? 0
       if (exitCode !== 0 && !allowFailure) {
-        reject(new Error(stderr || stdout || `ffmpeg exited with code ${exitCode}`))
+        reject(new Error(stderr || stdout || `${binary} exited with code ${exitCode}`))
         return
       }
 
@@ -375,15 +418,98 @@ async function runFfmpeg(args: string[], allowFailure = false) {
   })
 }
 
-async function probeMediaFile(filePath: string) {
-  const { stderr } = await runFfmpeg(['-hide_banner', '-i', filePath], true)
-  const durationSeconds = parseDurationFromFfmpeg(stderr)
-  if (!durationSeconds) {
+async function runFfmpeg(args: string[], allowFailure = false) {
+  return await runMediaBinary('ffmpeg', args, allowFailure)
+}
+
+async function runFfprobe(filePath: string) {
+  return await runMediaBinary('ffprobe', [
+    '-v',
+    'error',
+    '-show_entries',
+    'format=duration:stream=codec_type',
+    '-of',
+    'json',
+    filePath,
+  ])
+}
+
+function parseProbedMedia(stdout: string): ProbedMediaFile {
+  let parsed: { format?: { duration?: string | number | null }; streams?: Array<{ codec_type?: string | null }> }
+  try {
+    parsed = JSON.parse(stdout) as { format?: { duration?: string | number | null }; streams?: Array<{ codec_type?: string | null }> }
+  } catch (error) {
+    throw new Error('We could not inspect the uploaded media duration.', { cause: error })
+  }
+
+  const streams = Array.isArray(parsed.streams) ? parsed.streams : []
+  const hasVideoStream = streams.some((stream) => stream.codec_type === 'video')
+  const hasAudioStream = streams.some((stream) => stream.codec_type === 'audio')
+  const durationSeconds = Number(parsed.format?.duration ?? 0)
+
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
     throw new Error('We could not inspect the uploaded media duration.')
+  }
+
+  if (!hasVideoStream && !hasAudioStream) {
+    throw new Error('The uploaded file does not contain supported audio or video streams.')
   }
 
   return {
     durationSeconds,
+    hasVideoStream,
+    hasAudioStream,
+    mediaKind: hasVideoStream ? 'video' : 'audio',
+  }
+}
+
+async function probeMediaFile(filePath: string) {
+  const { stdout } = await runFfprobe(filePath)
+  return parseProbedMedia(stdout)
+}
+
+function toProbeMetadata(probe: ProbedMediaFile) {
+  return {
+    mediaKind: probe.mediaKind,
+    hasVideoStream: probe.hasVideoStream,
+    hasAudioStream: probe.hasAudioStream,
+    probeCompletedAt: new Date().toISOString(),
+  }
+}
+
+function serializeProbeError(error: unknown) {
+  if (error instanceof AppError) {
+    return {
+      code: error.code,
+      message: error.message,
+      details: error.details ?? null,
+    }
+  }
+
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+    }
+  }
+
+  return {
+    message: 'Unknown media processing error.',
+  }
+}
+
+async function markProbeFailure(assetRow: AssetRow, probe: ProbedMediaFile | null, error: unknown) {
+  try {
+    await updateVideoAssetRow(assetRow.id, {
+      status: 'failed',
+      duration_seconds: probe?.durationSeconds ?? assetRow.duration_seconds,
+      upload_metadata: {
+        ...(assetRow.upload_metadata ?? {}),
+        ...(probe ? toProbeMetadata(probe) : {}),
+        probeError: serializeProbeError(error),
+      },
+    })
+  } catch {
+    // Best effort: preserve the original media failure when persistence also fails.
   }
 }
 
@@ -1865,114 +1991,138 @@ export async function processVideoProbe(payload: ProbeJobPayload) {
   const proxyFilePath = path.join(workingDirectory, 'proxy.mp4')
   const masterFilePath = path.join(workingDirectory, 'master.mp4')
   const thumbnailPath = path.join(workingDirectory, 'thumbnail.jpg')
+  let probe: ProbedMediaFile | null = null
 
   try {
     const rawBuffer = await downloadBuffer(assetRow.storage_bucket ?? buckets.raw, assetRow.storage_path ?? '')
     await writeFile(rawFilePath, rawBuffer)
 
-    const probe = await probeMediaFile(rawFilePath)
+    probe = await probeMediaFile(rawFilePath)
     if (probe.durationSeconds < uploadPolicy.minDurationSeconds) {
-      await updateVideoAssetRow(assetRow.id, { status: 'failed', duration_seconds: probe.durationSeconds })
-      throw new AppError('VALIDATION_ERROR', `Video must be at least ${formatDurationLabel(uploadPolicy.minDurationSeconds)} long.`)
+      throw new AppError('VALIDATION_ERROR', `Media must be at least ${formatDurationLabel(uploadPolicy.minDurationSeconds)} long.`)
     }
 
     if (probe.durationSeconds > uploadPolicy.maxDurationSeconds) {
-      await updateVideoAssetRow(assetRow.id, { status: 'failed', duration_seconds: probe.durationSeconds })
-      throw new AppError('VALIDATION_ERROR', `Video must be no longer than ${formatDurationLabel(uploadPolicy.maxDurationSeconds)}.`)
+      throw new AppError('VALIDATION_ERROR', `Media must be no longer than ${formatDurationLabel(uploadPolicy.maxDurationSeconds)}.`)
     }
 
-    await Promise.all([
-      transcodeProxy(rawFilePath, proxyFilePath),
-      transcodeMaster(rawFilePath, masterFilePath),
-      renderThumbnail(rawFilePath, thumbnailPath),
-    ])
+    let proxyPath: string | null = null
+    let masterPath: string | null = null
 
-    const [proxyBuffer, masterBuffer, thumbnailBuffer] = await Promise.all([
-      readFile(proxyFilePath),
-      readFile(masterFilePath),
-      readFile(thumbnailPath),
-    ])
+    if (probe.mediaKind === 'video') {
+      await Promise.all([
+        transcodeProxy(rawFilePath, proxyFilePath),
+        transcodeMaster(rawFilePath, masterFilePath),
+        renderThumbnail(rawFilePath, thumbnailPath),
+      ])
 
-    const proxyPath = `${payload.projectId}/${payload.assetId}/proxy.mp4`
-    const masterPath = `${payload.projectId}/${payload.assetId}/master.mp4`
-    const nextThumbnailPath = `${payload.projectId}/${payload.assetId}/thumbnail.jpg`
+      const [proxyBuffer, masterBuffer, thumbnailBuffer] = await Promise.all([
+        readFile(proxyFilePath),
+        readFile(masterFilePath),
+        readFile(thumbnailPath),
+      ])
 
-    await Promise.all([
-      uploadBuffer(buckets.proxy, proxyPath, proxyBuffer, 'video/mp4'),
-      uploadBuffer(buckets.rendered, masterPath, masterBuffer, 'video/mp4'),
-      uploadBuffer(buckets.thumbnails, nextThumbnailPath, thumbnailBuffer, 'image/jpeg'),
-    ])
+      proxyPath = `${payload.projectId}/${payload.assetId}/proxy.mp4`
+      masterPath = `${payload.projectId}/${payload.assetId}/master.mp4`
+      const nextThumbnailPath = `${payload.projectId}/${payload.assetId}/thumbnail.jpg`
 
-    await updateVideoAssetRow(assetRow.id, {
-      status: 'ready',
-      duration_seconds: probe.durationSeconds,
-      proxy_bucket: buckets.proxy,
-      proxy_path: proxyPath,
-      render_bucket: buckets.rendered,
-      render_path: masterPath,
-      thumbnail_bucket: buckets.thumbnails,
-      thumbnail_path: nextThumbnailPath,
-      upload_metadata: {
-        ...(assetRow.upload_metadata ?? {}),
-        proxyReadyAt: new Date().toISOString(),
+      await Promise.all([
+        uploadBuffer(buckets.proxy, proxyPath, proxyBuffer, 'video/mp4'),
+        uploadBuffer(buckets.rendered, masterPath, masterBuffer, 'video/mp4'),
+        uploadBuffer(buckets.thumbnails, nextThumbnailPath, thumbnailBuffer, 'image/jpeg'),
+      ])
+
+      await updateVideoAssetRow(assetRow.id, {
+        status: 'ready',
+        duration_seconds: probe.durationSeconds,
+        proxy_bucket: buckets.proxy,
+        proxy_path: proxyPath,
+        render_bucket: buckets.rendered,
+        render_path: masterPath,
+        thumbnail_bucket: buckets.thumbnails,
+        thumbnail_path: nextThumbnailPath,
+        upload_metadata: {
+          ...(assetRow.upload_metadata ?? {}),
+          ...toProbeMetadata(probe),
+          proxyReadyAt: new Date().toISOString(),
+          probeError: null,
+        },
+      })
+
+      await Promise.all([
+        registerMediaItem({
+          ownerUserId: projectRow.owner_user_id,
+          sourceModule: 'video',
+          assetType: 'video',
+          fileName: 'proxy.mp4',
+          fileType: 'video/mp4',
+          sizeBytes: proxyBuffer.byteLength,
+          storageBucket: buckets.proxy,
+          storagePath: proxyPath,
+          variant: 'proxy',
+          linkedEntityType: 'video_project',
+          linkedEntityId: payload.projectId,
+          metadata: { assetId: payload.assetId, mediaKind: probe.mediaKind },
+        }),
+        registerMediaItem({
+          ownerUserId: projectRow.owner_user_id,
+          sourceModule: 'video',
+          assetType: 'video',
+          fileName: 'master.mp4',
+          fileType: 'video/mp4',
+          sizeBytes: masterBuffer.byteLength,
+          storageBucket: buckets.rendered,
+          storagePath: masterPath,
+          variant: 'master',
+          linkedEntityType: 'video_project',
+          linkedEntityId: payload.projectId,
+          metadata: { assetId: payload.assetId, mediaKind: probe.mediaKind },
+        }),
+        registerMediaItem({
+          ownerUserId: projectRow.owner_user_id,
+          sourceModule: 'video',
+          assetType: 'image',
+          fileName: 'thumbnail.jpg',
+          fileType: 'image/jpeg',
+          sizeBytes: thumbnailBuffer.byteLength,
+          storageBucket: buckets.thumbnails,
+          storagePath: nextThumbnailPath,
+          variant: 'thumbnail',
+          linkedEntityType: 'video_project',
+          linkedEntityId: payload.projectId,
+          metadata: { assetId: payload.assetId, mediaKind: probe.mediaKind },
+        }),
+      ])
+    } else {
+      await updateVideoAssetRow(assetRow.id, {
+        status: 'ready',
+        duration_seconds: probe.durationSeconds,
+        proxy_bucket: null,
+        proxy_path: null,
+        render_bucket: null,
+        render_path: null,
+        thumbnail_bucket: null,
+        thumbnail_path: null,
+        upload_metadata: {
+          ...(assetRow.upload_metadata ?? {}),
+          ...toProbeMetadata(probe),
+          probeError: null,
+        },
+      })
+    }
+
+    await appendActivityLog({
+      userId: projectRow.owner_user_id,
+      module: 'video',
+      action: 'probe_completed',
+      entityType: 'video_asset',
+      entityId: payload.assetId,
+      metadata: {
+        projectId: payload.projectId,
+        durationSeconds: probe.durationSeconds,
+        mediaKind: probe.mediaKind,
       },
     })
-
-    await Promise.all([
-      registerMediaItem({
-        ownerUserId: projectRow.owner_user_id,
-        sourceModule: 'video',
-        assetType: 'video',
-        fileName: 'proxy.mp4',
-        fileType: 'video/mp4',
-        sizeBytes: proxyBuffer.byteLength,
-        storageBucket: buckets.proxy,
-        storagePath: proxyPath,
-        variant: 'proxy',
-        linkedEntityType: 'video_project',
-        linkedEntityId: payload.projectId,
-        metadata: { assetId: payload.assetId },
-      }),
-      registerMediaItem({
-        ownerUserId: projectRow.owner_user_id,
-        sourceModule: 'video',
-        assetType: 'video',
-        fileName: 'master.mp4',
-        fileType: 'video/mp4',
-        sizeBytes: masterBuffer.byteLength,
-        storageBucket: buckets.rendered,
-        storagePath: masterPath,
-        variant: 'master',
-        linkedEntityType: 'video_project',
-        linkedEntityId: payload.projectId,
-        metadata: { assetId: payload.assetId },
-      }),
-      registerMediaItem({
-        ownerUserId: projectRow.owner_user_id,
-        sourceModule: 'video',
-        assetType: 'image',
-        fileName: 'thumbnail.jpg',
-        fileType: 'image/jpeg',
-        sizeBytes: thumbnailBuffer.byteLength,
-        storageBucket: buckets.thumbnails,
-        storagePath: nextThumbnailPath,
-        variant: 'thumbnail',
-        linkedEntityType: 'video_project',
-        linkedEntityId: payload.projectId,
-        metadata: { assetId: payload.assetId },
-      }),
-      appendActivityLog({
-        userId: projectRow.owner_user_id,
-        module: 'video',
-        action: 'probe_completed',
-        entityType: 'video_asset',
-        entityId: payload.assetId,
-        metadata: {
-          projectId: payload.projectId,
-          durationSeconds: probe.durationSeconds,
-        },
-      }),
-    ])
 
     const waveformJob = await createJob({
       type: 'video-waveform',
@@ -2018,6 +2168,9 @@ export async function processVideoProbe(payload: ProbeJobPayload) {
       proxyPath,
       masterPath,
     }
+  } catch (error) {
+    await markProbeFailure(assetRow, probe, error)
+    throw error
   } finally {
     await rm(workingDirectory, { recursive: true, force: true })
   }
@@ -2161,6 +2314,10 @@ export async function processVideoRender(payload: RenderJobPayload) {
   const { projectRow, assetRow } = await loadProjectRows(payload.projectId)
   if (!assetRow) {
     throw new AppError('VALIDATION_ERROR', 'Upload a source video before exporting.')
+  }
+
+  if ((assetRow.upload_metadata?.mediaKind as string | undefined) === 'audio') {
+    throw new AppError('VALIDATION_ERROR', 'Audio-only source exports are not supported yet.')
   }
 
   const sourceBucket = assetRow.render_bucket ?? assetRow.proxy_bucket ?? assetRow.storage_bucket ?? buckets.raw

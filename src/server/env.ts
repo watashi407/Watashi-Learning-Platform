@@ -40,6 +40,8 @@ const serverOnlyEnvSchema = z.object({
   SUPABASE_VIDEO_SUBTITLE_BUCKET: optionalNonEmptyString(),
   SUPABASE_VIDEO_THUMBNAIL_BUCKET: optionalNonEmptyString(),
   VIDEO_RAW_RETENTION_DAYS: optionalNonEmptyString(),
+  FFMPEG_PATH: optionalNonEmptyString(),
+  FFPROBE_PATH: optionalNonEmptyString(),
 })
 
 const serverEnvSchema = publicEnvSchema.extend(serverOnlyEnvSchema.shape)

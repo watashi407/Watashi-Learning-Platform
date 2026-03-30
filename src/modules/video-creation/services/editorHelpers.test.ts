@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   clampMediaOffset,
   computeTimelineDuration,
+  createPreviewPlaybackWindow,
   createFallbackSourceTitle,
+  getPreviewMediaDuration,
+  getPreviewRestartTime,
   getTimelineRangeEnd,
   isPlaybackToggleKey,
   isCorruptedProjectTitle,
   isMediaOffsetAtEnd,
+  isPreviewPlaybackWindowAtEnd,
+  mapPreviewMediaTimeToTimelineTime,
   normalizeProjectTitle,
   parseAudioAssetTransfer,
   parseImageAssetTransfer,
@@ -153,5 +158,48 @@ describe('editorHelpers', () => {
     expect(clampMediaOffset(11, 10)).toBe(9.95)
     expect(clampMediaOffset(-2, 10)).toBe(0)
     expect(clampMediaOffset(4, null)).toBe(4)
+  })
+
+  it('creates stable preview playback windows for source and clip playback', () => {
+    expect(createPreviewPlaybackWindow(14, null)).toEqual({
+      timelineStartSeconds: 0,
+      mediaOffsetSeconds: 14,
+    })
+
+    expect(createPreviewPlaybackWindow(18, {
+      startSeconds: 10,
+      endSeconds: 24,
+    })).toEqual({
+      timelineStartSeconds: 10,
+      mediaOffsetSeconds: 8,
+      timelineEndSeconds: 24,
+    })
+  })
+
+  it('maps media time back to timeline time without compounding offsets', () => {
+    const sourceWindow = createPreviewPlaybackWindow(14, null)
+    const clipWindow = createPreviewPlaybackWindow(18, {
+      startSeconds: 10,
+      endSeconds: 24,
+    })
+
+    expect(mapPreviewMediaTimeToTimelineTime(sourceWindow, 3, 30)).toBe(3)
+    expect(mapPreviewMediaTimeToTimelineTime(clipWindow, 3, 30)).toBe(13)
+    expect(mapPreviewMediaTimeToTimelineTime(clipWindow, 25, 30)).toBe(24)
+  })
+
+  it('computes playable media duration and end-of-window behavior for clip playback', () => {
+    const clipWindow = createPreviewPlaybackWindow(18, {
+      startSeconds: 10,
+      endSeconds: 24,
+    })
+
+    expect(getPreviewMediaDuration(clipWindow, 40)).toBe(14)
+    expect(getPreviewRestartTime(clipWindow)).toBe(10)
+    expect(isPreviewPlaybackWindowAtEnd({
+      timelineStartSeconds: 10,
+      mediaOffsetSeconds: 13.96,
+      timelineEndSeconds: 24,
+    }, 40)).toBe(true)
   })
 })

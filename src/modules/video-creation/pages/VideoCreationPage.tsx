@@ -22,6 +22,7 @@ import { EditorTopBar } from '../components/EditorTopBar'
 import { RecordingSheet } from '../components/RecordingSheet'
 import { createDefaultVideoEffects } from '../defaults'
 import {
+  createPreviewPlaybackWindow,
   computeTimelineDuration,
   createFallbackSourceTitle,
   isCorruptedProjectTitle,
@@ -163,9 +164,7 @@ export function VideoCreationPage() {
     .find((clip) => currentTime >= clip.startSeconds && currentTime <= clip.endSeconds)
 
   const activePreviewSourceUrl = activeVideoTimelineClip?.objectUrl ?? previewSourceUrl
-  const activePreviewOffsetSeconds = activeVideoTimelineClip
-    ? Math.max(0, currentTime - activeVideoTimelineClip.startSeconds)
-    : currentTime
+  const previewPlaybackWindow = createPreviewPlaybackWindow(currentTime, activeVideoTimelineClip ?? null)
 
   const subtitleJobStatus = studio.jobs.find((j) => j.id === 'subtitles')?.status ?? 'idle'
 
@@ -753,7 +752,9 @@ export function VideoCreationPage() {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <EditorCanvas
             sourceUrl={activePreviewSourceUrl}
-            sourceOffsetSeconds={activePreviewOffsetSeconds}
+            sourceTimelineStartSeconds={previewPlaybackWindow.timelineStartSeconds}
+            sourceMediaOffsetSeconds={previewPlaybackWindow.mediaOffsetSeconds}
+            sourceTimelineEndSeconds={previewPlaybackWindow.timelineEndSeconds}
             isPlaybackActive={isPreviewPlaying}
             effects={videoEffects}
             textOverlays={allTextOverlays}

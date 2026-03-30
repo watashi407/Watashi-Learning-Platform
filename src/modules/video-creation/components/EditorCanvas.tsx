@@ -5,7 +5,10 @@ import type { SubtitleCue, TextOverlay, VideoEffects } from '../types/video-proj
 import {
   clampMediaOffset,
   formatTimestamp,
-  isMediaOffsetAtEnd,
+  getPreviewMediaDuration,
+  getPreviewRestartTime,
+  isPreviewPlaybackWindowAtEnd,
+  mapPreviewMediaTimeToTimelineTime,
   parseTimestampLabel,
   shouldHandlePlaybackShortcut,
 } from '../services/editorHelpers'
@@ -35,7 +38,9 @@ function fontFamilyStyle(family: TextOverlay['fontFamily']) {
 
 type EditorCanvasProps = {
   sourceUrl: string | null
-  sourceOffsetSeconds: number
+  sourceTimelineStartSeconds: number
+  sourceMediaOffsetSeconds: number
+  sourceTimelineEndSeconds?: number
   isPlaybackActive: boolean
   effects: VideoEffects
   textOverlays: TextOverlay[]
@@ -65,7 +70,9 @@ type EditorCanvasProps = {
 
 export function EditorCanvas({
   sourceUrl,
-  sourceOffsetSeconds,
+  sourceTimelineStartSeconds,
+  sourceMediaOffsetSeconds,
+  sourceTimelineEndSeconds,
   isPlaybackActive,
   effects,
   textOverlays,
@@ -100,14 +107,28 @@ export function EditorCanvas({
     desiredPlaybackRef.current = isPlaybackActive
   }, [isPlaybackActive])
 
+  const playbackWindow = useMemo(() => ({
+    timelineStartSeconds: sourceTimelineStartSeconds,
+    mediaOffsetSeconds: sourceMediaOffsetSeconds,
+    timelineEndSeconds: sourceTimelineEndSeconds,
+  }), [sourceMediaOffsetSeconds, sourceTimelineEndSeconds, sourceTimelineStartSeconds])
+
+  const getPreviewDuration = useCallback(() => {
+    const video = videoRef.current
+    return getPreviewMediaDuration(
+      playbackWindow,
+      Number.isFinite(video?.duration) ? video.duration : null,
+    )
+  }, [playbackWindow, videoRef])
+
   const syncVideoPosition = useCallback(() => {
     const video = videoRef.current
     if (!video || !sourceUrl) return
-    const desiredTime = clampMediaOffset(sourceOffsetSeconds, Number.isFinite(video.duration) ? video.duration : null)
+    const desiredTime = clampMediaOffset(sourceMediaOffsetSeconds, getPreviewDuration())
     if (Math.abs(video.currentTime - desiredTime) > 0.35) {
       video.currentTime = desiredTime
     }
-  }, [sourceOffsetSeconds, sourceUrl, videoRef])
+  }, [getPreviewDuration, sourceMediaOffsetSeconds, sourceUrl, videoRef])
 
   const syncVideoPlayback = useCallback(() => {
     const video = videoRef.current
@@ -170,12 +191,11 @@ export function EditorCanvas({
     const video = videoRef.current
     if (!video || !sourceUrl) return
     if (isPlaybackActive) { onPlaybackChange(false); return }
-    const clipStartSeconds = Math.max(0, currentTime - sourceOffsetSeconds)
-    if (video.ended || isMediaOffsetAtEnd(sourceOffsetSeconds, Number.isFinite(video.duration) ? video.duration : null)) {
-      onScrub(clipStartSeconds)
+    if (video.ended || isPreviewPlaybackWindowAtEnd(playbackWindow, getPreviewDuration())) {
+      onScrub(getPreviewRestartTime(playbackWindow))
     }
     onPlaybackChange(true)
-  }, [currentTime, isPlaybackActive, onPlaybackChange, onScrub, sourceOffsetSeconds, sourceUrl, videoRef])
+  }, [getPreviewDuration, isPlaybackActive, onPlaybackChange, onScrub, playbackWindow, sourceUrl, videoRef])
 
   useEffect(() => {
     if (!sourceUrl) return
@@ -282,7 +302,30 @@ export function EditorCanvas({
               className="block max-h-full max-w-full object-contain"
               controls={false}
               onClick={togglePlayback}
-              onTimeUpdate={(e) => onTimeUpdate(sourceOffsetSeconds + e.currentTarget.currentTime)}
+              onTimeUpdate={(e) => {
+                const nextTimelineTime = mapPreviewMediaTimeToTimelineTime(
+                  playbackWindow,
+                  e.currentTarget.currentTime,
+                  totalDuration,
+                )
+                onTimeUpdate(nextTimelineTime)
+
+                const previewDuration = getPreviewDuration()
+                if (
+                  isPlaybackActive
+                  && Number.isFinite(previewDuration)
+                  && previewDuration
+                  && e.currentTarget.currentTime >= previewDuration - 0.05
+                ) {
+                  e.currentTarget.pause()
+                  onTimeUpdate(mapPreviewMediaTimeToTimelineTime(
+                    playbackWindow,
+                    previewDuration,
+                    totalDuration,
+                  ))
+                  onPlaybackChange(false)
+                }
+              }}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onEnded={() => { setIsPlaying(false); onPlaybackChange(false) }}
