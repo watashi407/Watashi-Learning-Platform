@@ -13,6 +13,8 @@ import {
   formatTimeLabel,
   parseAudioAssetTransfer,
   parseImageAssetTransfer,
+  parseImageOverlayTransfer,
+  parseTextOverlayTransfer,
   parseTimestampLabel,
   parseVideoAssetTransfer,
 } from '../services/editorHelpers'
@@ -61,7 +63,7 @@ type TrackDef = {
 const TRACKS: TrackDef[] = [
   { id: 'video',  icon: Film,     color: 'bg-[color-mix(in_oklab,var(--color-watashi-indigo)_80%,white)]',  borderColor: 'ring-[color-mix(in_oklab,var(--color-watashi-indigo)_50%,transparent)]', droppable: true, trimmable: true },
   { id: 'audio',  icon: Mic,      color: 'bg-[color-mix(in_oklab,var(--color-watashi-emerald)_80%,white)]', borderColor: 'ring-[color-mix(in_oklab,var(--color-watashi-emerald)_50%,transparent)]', droppable: true, trimmable: true },
-  { id: 'text',   icon: Type,     color: 'bg-amber-400',  borderColor: 'ring-amber-300/60',  trimmable: true },
+  { id: 'text',   icon: Type,     color: 'bg-amber-400',  borderColor: 'ring-amber-300/60',  droppable: true, trimmable: true },
   { id: 'images', icon: Image,    color: 'bg-sky-400',    borderColor: 'ring-sky-300/60',    droppable: true, trimmable: true },
   { id: 'subs',   icon: Captions, color: 'bg-pink-400',   borderColor: 'ring-pink-300/60' },
 ]
@@ -136,6 +138,8 @@ type EditorTimelineProps = {
   onDropVideoAsset: (asset: DroppedVideoAsset, startSeconds: number) => void
   onDropAudioAsset: (asset: DroppedAudioAsset, startSeconds: number) => void
   onDropImageAsset: (asset: DroppedImageAsset, startSeconds: number) => void
+  onRepositionTextOverlay?: (id: string, startSeconds: number, durationSeconds: number) => void
+  onRepositionImageOverlay?: (id: string, startSeconds: number, durationSeconds: number) => void
   onRequestAddVideo: () => void
   onRequestAddAudio: () => void
   onAddText: (text: string, position: 'top' | 'center' | 'bottom') => void
@@ -180,6 +184,8 @@ export function EditorTimeline({
   onDropVideoAsset,
   onDropAudioAsset,
   onDropImageAsset,
+  onRepositionTextOverlay,
+  onRepositionImageOverlay,
   onRequestAddVideo,
   onRequestAddAudio,
   onAddText,
@@ -198,6 +204,9 @@ export function EditorTimeline({
   const [sortingTrackId, setSortingTrackId] = useState<string | null>(null)
   const [sortPreviewIds, setSortPreviewIds] = useState<string[] | null>(null)
   const [hoveredDropTrackId, setHoveredDropTrackId] = useState<string | null>(null)
+  const [ghostBlock, setGhostBlock] = useState<{
+    trackId: string; blockId: string; startSeconds: number; endSeconds: number; label: string
+  } | null>(null)
   const [selected, setSelected] = useState<Selection | null>(null)
   const [editingLabel, setEditingLabel] = useState('')
   const [addMenuOpen, setAddMenuOpen] = useState(false)
@@ -326,6 +335,10 @@ export function EditorTimeline({
 
       // Always update position in the original track during the drag
       onBlockChange(d.trackId, d.blockId, { startSeconds: newStart, endSeconds: newStart + blockDuration })
+      // Keep ghost position in sync if already showing
+      if (d.targetTrackId !== d.trackId) {
+        setGhostBlock((g) => g ? { ...g, startSeconds: newStart, endSeconds: newStart + blockDuration } : g)
+      }
 
       // Detect compatible cross-layer target (same extra layer type only)
       const hitId = getTrackAtY(ev.clientY)
@@ -335,11 +348,13 @@ export function EditorTimeline({
         if (fromType && toType && fromType === toType) {
           d.targetTrackId = hitId
           setHoveredDropTrackId(hitId)
+          setGhostBlock({ trackId: hitId, blockId: d.blockId, startSeconds: d.finalStart, endSeconds: d.finalEnd, label: block.label })
           return
         }
       }
       d.targetTrackId = d.trackId
       setHoveredDropTrackId(null)
+      setGhostBlock(null)
     }
 
     function onUp() {
@@ -348,6 +363,7 @@ export function EditorTimeline({
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
       setHoveredDropTrackId(null)
+      setGhostBlock(null)
       if (!d) return
       if (!d.moved) { selectBlock(trackId, block); return }
       // Move to target layer if it changed
@@ -497,6 +513,7 @@ export function EditorTimeline({
 
         {blocks.map((block) => {
           const isSelected = selected?.blockId === block.id && selected.trackId === trackId
+          const isLeavingLayer = ghostBlock?.blockId === block.id && ghostBlock.trackId !== trackId
           return (
             <div
               key={block.id}
@@ -504,11 +521,13 @@ export function EditorTimeline({
                 'absolute top-1.5 bottom-1.5 flex items-center overflow-visible rounded-md px-2',
                 'cursor-grab ring-1 transition-all active:cursor-grabbing',
                 color,
-                isSelected
-                  ? 'ring-2 ring-white shadow-lg opacity-100'
-                  : hasSelection
-                    ? cx('opacity-50', borderColor)
-                    : cx('opacity-90 hover:opacity-100', borderColor),
+                isLeavingLayer
+                  ? cx('opacity-30 ring-dashed', borderColor)
+                  : isSelected
+                    ? 'ring-2 ring-white shadow-lg opacity-100'
+                    : hasSelection
+                      ? cx('opacity-50', borderColor)
+                      : cx('opacity-90 hover:opacity-100', borderColor),
               )}
               style={{ left: `${block.left}%`, width: `${Math.max(block.width, 1)}%` }}
               title={block.label}
@@ -535,6 +554,21 @@ export function EditorTimeline({
             </div>
           )
         })}
+
+        {/* Transfer ghost: shows where the clip will land in the target lane */}
+        {ghostBlock?.trackId === trackId && (
+          <div
+            className="pointer-events-none absolute top-1 bottom-1 flex items-center gap-1 overflow-hidden rounded-md border-2 border-dashed border-[var(--color-watashi-indigo)]/80 bg-[var(--color-watashi-indigo)]/15 px-2"
+            style={{
+              left: `${clampPct((ghostBlock.startSeconds / dur) * 100)}%`,
+              width: `${Math.max(clampPct(((ghostBlock.endSeconds - ghostBlock.startSeconds) / dur) * 100), 1)}%`,
+            }}
+          >
+            <span className="truncate text-[9px] font-semibold text-[var(--color-watashi-indigo)]">
+              {ghostBlock.label}
+            </span>
+          </div>
+        )}
 
         {/* Playhead overlay */}
         <div
@@ -759,10 +793,21 @@ export function EditorTimeline({
                       const raw = event.dataTransfer.getData('application/watashi-video-asset') || event.dataTransfer.getData('text/plain')
                       const payload = parseVideoAssetTransfer(raw)
                       if (payload) onDropVideoAsset(payload, startSeconds)
+                    } else if (fixed.id === 'text') {
+                      const raw = event.dataTransfer.getData('application/watashi-text-overlay') || event.dataTransfer.getData('text/plain')
+                      const payload = parseTextOverlayTransfer(raw)
+                      if (payload) onRepositionTextOverlay?.(payload.id, startSeconds, payload.durationSeconds)
                     } else if (fixed.id === 'images') {
-                      const raw = event.dataTransfer.getData('application/watashi-image-asset') || event.dataTransfer.getData('text/plain')
-                      const payload = parseImageAssetTransfer(raw)
-                      if (payload) onDropImageAsset(payload, startSeconds)
+                      // Accept both image asset drops (new) and overlay reposition drops
+                      const overlayRaw = event.dataTransfer.getData('application/watashi-image-overlay')
+                      if (overlayRaw) {
+                        const payload = parseImageOverlayTransfer(overlayRaw)
+                        if (payload) onRepositionImageOverlay?.(payload.id, startSeconds, payload.durationSeconds)
+                      } else {
+                        const raw = event.dataTransfer.getData('application/watashi-image-asset') || event.dataTransfer.getData('text/plain')
+                        const payload = parseImageAssetTransfer(raw)
+                        if (payload) onDropImageAsset(payload, startSeconds)
+                      }
                     }
                   } : undefined,
                   hoveredDropTrackId === fixed.id,
@@ -800,7 +845,18 @@ export function EditorTimeline({
                     <X className="h-2.5 w-2.5" />
                   </button>
                 </div>
-                {renderLane(extra.id, blocks, style.color, style.borderColor, style.trimmable ?? false, false, undefined, isDropTarget)}
+                {renderLane(
+                  extra.id, blocks, style.color, style.borderColor, style.trimmable ?? false,
+                  extra.type === 'text',
+                  extra.type === 'text' ? (event) => {
+                    event.preventDefault()
+                    const startSeconds = getLaneStartSeconds(event)
+                    const raw = event.dataTransfer.getData('application/watashi-text-overlay') || event.dataTransfer.getData('text/plain')
+                    const payload = parseTextOverlayTransfer(raw)
+                    if (payload) onRepositionTextOverlay?.(payload.id, startSeconds, payload.durationSeconds)
+                  } : undefined,
+                  isDropTarget,
+                )}
               </div>
             )
           }

@@ -314,7 +314,17 @@ export function EditorLeftPanel({
                   <>
                     <p className="px-0.5 pt-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-watashi-text-soft)]">Overlays</p>
                     {imageOverlays.map((img) => (
-                      <div key={img.id} className="flex items-center gap-2 rounded-lg bg-[var(--color-watashi-surface-low)] p-2 ring-1 ring-[var(--color-watashi-border)]">
+                      <div
+                        key={img.id}
+                        draggable
+                        onDragStart={(event) => {
+                          const payload = JSON.stringify({ id: img.id, label: img.label, durationSeconds: Math.max(1, img.endSeconds - img.startSeconds) })
+                          event.dataTransfer.setData('application/watashi-image-overlay', payload)
+                          event.dataTransfer.setData('text/plain', payload)
+                          event.dataTransfer.effectAllowed = 'copy'
+                        }}
+                        className="flex cursor-grab items-center gap-2 rounded-lg bg-[var(--color-watashi-surface-low)] p-2 ring-1 ring-[var(--color-watashi-border)] transition-all hover:ring-[color-mix(in_oklab,var(--color-watashi-indigo)_25%,var(--color-watashi-border))] active:cursor-grabbing"
+                      >
                         {img.objectUrl && <img src={img.objectUrl} alt={img.label} className="h-7 w-7 rounded-md object-cover" />}
                         <span className="flex-1 truncate text-[11px] font-semibold text-[var(--color-watashi-text)]">{img.label}</span>
                       </div>
@@ -435,12 +445,28 @@ export function EditorLeftPanel({
             {textOverlays.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-watashi-text-soft)]">Active overlays</p>
-                {textOverlays.map((t) => (
-                  <div key={t.id} className="rounded-lg bg-[var(--color-watashi-surface-low)] p-2 ring-1 ring-[var(--color-watashi-border)]">
-                    <p className="truncate text-[11px] font-semibold text-[var(--color-watashi-text-strong)]">{t.text}</p>
-                    <p className="mt-0.5 text-[10px] text-[var(--color-watashi-text-soft)]">{t.startSeconds}s – {t.endSeconds}s · {t.position}</p>
-                  </div>
-                ))}
+                {textOverlays.map((t) => {
+                  const isUnplaced = t.placed === false
+                  return (
+                    <div
+                      key={t.id}
+                      draggable
+                      onDragStart={(event) => {
+                        const duration = isUnplaced ? 5 : Math.max(1, t.endSeconds - t.startSeconds)
+                        const payload = JSON.stringify({ id: t.id, label: t.text.slice(0, 30), durationSeconds: duration })
+                        event.dataTransfer.setData('application/watashi-text-overlay', payload)
+                        event.dataTransfer.setData('text/plain', payload)
+                        event.dataTransfer.effectAllowed = 'copy'
+                      }}
+                      className={`cursor-grab rounded-lg p-2 ring-1 transition-all active:cursor-grabbing ${isUnplaced ? 'bg-amber-500/10 ring-amber-400/50 hover:ring-amber-400' : 'bg-[var(--color-watashi-surface-low)] ring-[var(--color-watashi-border)] hover:ring-[color-mix(in_oklab,var(--color-watashi-indigo)_25%,var(--color-watashi-border))]'}`}
+                    >
+                      <p className="truncate text-[11px] font-semibold text-[var(--color-watashi-text-strong)]">{t.text}</p>
+                      <p className="mt-0.5 text-[10px] text-[var(--color-watashi-text-soft)]">
+                        {isUnplaced ? 'Drag to timeline to place' : `${t.startSeconds}s – ${t.endSeconds}s · ${t.position}`}
+                      </p>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -495,15 +521,31 @@ export function EditorLeftPanel({
             {imageOverlays.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-watashi-text-soft)]">On canvas</p>
-                {imageOverlays.map((img) => (
-                  <div key={img.id} className="flex items-center gap-2 rounded-lg bg-[var(--color-watashi-surface-low)] p-2 ring-1 ring-[var(--color-watashi-border)]">
-                    {img.objectUrl && <img src={img.objectUrl} alt={img.label} className="h-7 w-7 rounded-md object-cover" />}
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-semibold text-[var(--color-watashi-text-strong)]">{img.label}</p>
-                      <p className="text-[10px] text-[var(--color-watashi-text-soft)]">{img.position} · {img.startSeconds}s</p>
+                {imageOverlays.map((img) => {
+                  const isUnplaced = img.placed === false
+                  return (
+                    <div
+                      key={img.id}
+                      draggable
+                      onDragStart={(event) => {
+                        const duration = isUnplaced ? 5 : Math.max(1, img.endSeconds - img.startSeconds)
+                        const payload = JSON.stringify({ id: img.id, label: img.label, durationSeconds: duration })
+                        event.dataTransfer.setData('application/watashi-image-overlay', payload)
+                        event.dataTransfer.setData('text/plain', payload)
+                        event.dataTransfer.effectAllowed = 'copy'
+                      }}
+                      className={`flex cursor-grab items-center gap-2 rounded-lg p-2 ring-1 transition-all active:cursor-grabbing ${isUnplaced ? 'bg-amber-500/10 ring-amber-400/50 hover:ring-amber-400' : 'bg-[var(--color-watashi-surface-low)] ring-[var(--color-watashi-border)] hover:ring-[color-mix(in_oklab,var(--color-watashi-indigo)_25%,var(--color-watashi-border))]'}`}
+                    >
+                      {img.objectUrl && <img src={img.objectUrl} alt={img.label} className="h-7 w-7 rounded-md object-cover" />}
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-semibold text-[var(--color-watashi-text-strong)]">{img.label}</p>
+                        <p className="text-[10px] text-[var(--color-watashi-text-soft)]">
+                          {isUnplaced ? 'Drag to timeline to place' : `${img.position} · ${img.startSeconds}s`}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

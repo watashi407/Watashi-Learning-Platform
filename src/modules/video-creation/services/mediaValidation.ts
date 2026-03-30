@@ -24,44 +24,82 @@ export function formatBytes(bytes: number) {
   return `${Math.round(bytes / (1024 * 1024))} MB`
 }
 
-export async function readVideoDuration(file: File) {
+export async function readVideoDuration(file: File): Promise<number> {
   const objectUrl = URL.createObjectURL(file)
 
-  return await new Promise<number>((resolve, reject) => {
+  return new Promise<number>((resolve, reject) => {
     const video = document.createElement('video')
     video.preload = 'metadata'
+    let settled = false
+    let metadataDuration = 0
+
+    function settle(result: number | Error) {
+      if (settled) return
+      settled = true
+      URL.revokeObjectURL(objectUrl)
+      video.src = ''
+      if (result instanceof Error) reject(result)
+      else resolve(result)
+    }
 
     video.onloadedmetadata = () => {
-      const duration = Number.isFinite(video.duration) ? video.duration : 0
-      URL.revokeObjectURL(objectUrl)
-      resolve(duration)
+      // Store the metadata-reported duration as a fallback.
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        metadataDuration = video.duration
+      }
+      // Always seek to the end to discover the real duration.
+      // Many files (screen recordings, progressive MP4s, OBS/Loom exports) write
+      // incorrect or placeholder durations in their container headers. Seeking
+      // forces the browser to scan to the true playback endpoint.
+      video.currentTime = 1e10
+    }
+
+    video.onseeked = () => {
+      // Prefer the seek-end time; fall back to metadata duration when seeking
+      // returns 0 (e.g. format has no seek index).
+      settle(Math.max(video.currentTime, metadataDuration))
     }
 
     video.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error('We could not inspect that video file. Please try a standard MP4, MOV, or WebM export.'))
+      settle(new Error('We could not inspect that video file. Please try a standard MP4, MOV, or WebM export.'))
     }
 
     video.src = objectUrl
   })
 }
 
-export async function readAudioDuration(file: File) {
+export async function readAudioDuration(file: File): Promise<number> {
   const objectUrl = URL.createObjectURL(file)
 
-  return await new Promise<number>((resolve, reject) => {
+  return new Promise<number>((resolve, reject) => {
     const audio = document.createElement('audio')
     audio.preload = 'metadata'
+    let settled = false
+    let metadataDuration = 0
+
+    function settle(result: number | Error) {
+      if (settled) return
+      settled = true
+      URL.revokeObjectURL(objectUrl)
+      audio.src = ''
+      if (result instanceof Error) reject(result)
+      else resolve(result)
+    }
 
     audio.onloadedmetadata = () => {
-      const duration = Number.isFinite(audio.duration) ? audio.duration : 0
-      URL.revokeObjectURL(objectUrl)
-      resolve(duration)
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        metadataDuration = audio.duration
+      }
+      // Always seek to the end to get the true playback length.
+      audio.currentTime = 1e10
+    }
+
+    audio.onseeked = () => {
+      settle(Math.max(audio.currentTime, metadataDuration))
     }
 
     audio.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error('We could not inspect that audio file. Please try MP3, WAV, or WebM audio.'))
+      settle(new Error('We could not inspect that audio file. Please try MP3, WAV, or WebM audio.'))
     }
 
     audio.src = objectUrl

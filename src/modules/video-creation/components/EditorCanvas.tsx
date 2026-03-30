@@ -1,4 +1,4 @@
-import { Maximize2, Pause, Play, Settings, SkipBack, SkipForward } from 'lucide-react'
+import { GripVertical, Maximize2, Pause, Play, Settings, SkipBack, SkipForward, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import type { SubtitleCue, TextOverlay, VideoEffects } from '../types/video-project.types'
@@ -59,6 +59,8 @@ type EditorCanvasProps = {
   videoRef: RefObject<HTMLVideoElement | null>
   onTextOverlayMove?: (id: string, x: number, y: number) => void
   onImageOverlayMove?: (id: string, x: number, y: number) => void
+  onDeleteTextOverlay?: (id: string) => void
+  onDeleteImageOverlay?: (id: string) => void
 }
 
 export function EditorCanvas({
@@ -77,6 +79,8 @@ export function EditorCanvas({
   videoRef,
   onTextOverlayMove,
   onImageOverlayMove,
+  onDeleteTextOverlay,
+  onDeleteImageOverlay,
 }: EditorCanvasProps) {
   const progressBarRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -87,6 +91,8 @@ export function EditorCanvas({
   } | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [showControls, setShowControls] = useState(true)
+  const [draggingOverlayId, setDraggingOverlayId] = useState<string | null>(null)
+  const [selectedCanvasItemId, setSelectedCanvasItemId] = useState<string | null>(null)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const desiredPlaybackRef = useRef(isPlaybackActive)
 
@@ -231,6 +237,7 @@ export function EditorCanvas({
   function startOverlayDrag(e: React.MouseEvent, id: string, type: 'text' | 'image', initial: { x: number; y: number }) {
     e.stopPropagation()
     e.preventDefault()
+    setDraggingOverlayId(id)
     overlayDragRef.current = { id, type, startMouseX: e.clientX, startMouseY: e.clientY, startX: initial.x, startY: initial.y }
 
     function onMove(ev: MouseEvent) {
@@ -246,6 +253,7 @@ export function EditorCanvas({
 
     function onUp() {
       overlayDragRef.current = null
+      setDraggingOverlayId(null)
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -266,6 +274,7 @@ export function EditorCanvas({
             ref={containerRef}
             className="relative overflow-hidden rounded-2xl shadow-[0_8px_32px_-8px_rgba(0,0,0,0.18),0_2px_8px_-2px_rgba(0,0,0,0.10)]"
             style={{ maxWidth: '100%', maxHeight: '100%' }}
+            onClick={() => setSelectedCanvasItemId(null)}
           >
             <video
               ref={videoRef}
@@ -282,14 +291,16 @@ export function EditorCanvas({
 
             {activeTextOverlays.map((overlay) => {
               const hasXY = overlay.x !== undefined && overlay.y !== undefined
-              const draggable = !!onTextOverlayMove
+              const canDrag = !!onTextOverlayMove
+              const isSelected = selectedCanvasItemId === overlay.id
               return (
                 <div
                   key={overlay.id}
                   className={cx(
-                    'absolute z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]',
-                    draggable ? 'cursor-move select-none' : 'pointer-events-none',
+                    'group absolute z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-[transform,outline] duration-100',
+                    canDrag ? 'cursor-move select-none' : 'pointer-events-none',
                     !hasXY && textPositionClass(overlay.position),
+                    (draggingOverlayId === overlay.id || isSelected) && 'scale-105 outline outline-2 outline-offset-4 outline-[var(--color-watashi-indigo)]',
                   )}
                   style={{
                     fontFamily: fontFamilyStyle(overlay.fontFamily),
@@ -300,16 +311,57 @@ export function EditorCanvas({
                     borderRadius: overlay.bgColor ? 6 : undefined,
                     ...(hasXY && { left: `${overlay.x}%`, top: `${overlay.y}%`, transform: 'translate(-50%, -50%)' }),
                   }}
-                  onMouseDown={draggable ? (e) => startOverlayDrag(e, overlay.id, 'text', getOverlayInitialXY(overlay)) : undefined}
+                  onClick={(e) => { e.stopPropagation(); setSelectedCanvasItemId(overlay.id) }}
+                  onMouseDown={canDrag ? (e) => startOverlayDrag(e, overlay.id, 'text', getOverlayInitialXY(overlay)) : undefined}
                 >
                   {overlay.text}
+
+                  {/* Delete button — visible on hover or when selected */}
+                  {canDrag && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.stopPropagation(); onDeleteTextOverlay?.(overlay.id); setSelectedCanvasItemId(null) }}
+                      title="Delete overlay"
+                      className={cx(
+                        'absolute -left-2 -top-2 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-white shadow-md transition-opacity',
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                      )}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+
+                  {/* Grip handle — drag to any timeline text layer */}
+                  {canDrag && (
+                    <div
+                      draggable
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onDragStart={(e) => {
+                        e.stopPropagation()
+                        const dur = Math.max(1, overlay.endSeconds - overlay.startSeconds)
+                        const payload = JSON.stringify({ id: overlay.id, label: overlay.text.slice(0, 30), durationSeconds: dur })
+                        e.dataTransfer.setData('application/watashi-text-overlay', payload)
+                        e.dataTransfer.setData('text/plain', payload)
+                        // Must match timeline's dropEffect = 'copy'
+                        e.dataTransfer.effectAllowed = 'copy'
+                      }}
+                      title="Drag to timeline layer"
+                      className={cx(
+                        'absolute -right-2 -top-2 flex h-5 w-5 cursor-grab items-center justify-center rounded bg-[var(--color-watashi-indigo)] text-white shadow-md transition-opacity active:cursor-grabbing',
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                      )}
+                    >
+                      <GripVertical className="h-3 w-3" />
+                    </div>
+                  )}
                 </div>
               )
             })}
 
             {activeImageOverlays.map((overlay) => {
               const hasXY = overlay.x !== undefined && overlay.y !== undefined
-              const draggable = !!onImageOverlayMove
+              const canDrag = !!onImageOverlayMove
+              const isSelected = selectedCanvasItemId === overlay.id
               const namedPosClass = hasXY ? '' : (
                 overlay.position === 'top-left' ? 'left-4 top-4'
                   : overlay.position === 'top-right' ? 'right-4 top-4'
@@ -318,21 +370,68 @@ export function EditorCanvas({
                   : 'bottom-16 right-4'
               )
               return (
-                <img
+                <div
                   key={overlay.id}
-                  src={overlay.objectUrl ?? undefined}
-                  alt={overlay.label}
                   className={cx(
-                    'absolute z-10 max-h-32 max-w-32 rounded-xl object-contain shadow-lg',
-                    draggable ? 'cursor-move select-none' : 'pointer-events-none',
+                    'group absolute z-10 transition-[transform,outline] duration-100',
                     namedPosClass,
+                    (draggingOverlayId === overlay.id || isSelected) && 'scale-105 outline outline-2 outline-offset-2 outline-[var(--color-watashi-indigo)]',
                   )}
                   style={{
-                    opacity: overlay.opacity,
                     ...(hasXY && { left: `${overlay.x}%`, top: `${overlay.y}%`, transform: 'translate(-50%, -50%)' }),
                   }}
-                  onMouseDown={draggable ? (e) => startOverlayDrag(e, overlay.id, 'image', getOverlayInitialXY(overlay)) : undefined}
-                />
+                  onClick={(e) => { e.stopPropagation(); setSelectedCanvasItemId(overlay.id) }}
+                >
+                  <img
+                    src={overlay.objectUrl ?? undefined}
+                    alt={overlay.label}
+                    className={cx(
+                      'max-h-32 max-w-32 rounded-xl object-contain shadow-lg',
+                      canDrag ? 'cursor-move select-none' : 'pointer-events-none',
+                    )}
+                    style={{ opacity: overlay.opacity }}
+                    onMouseDown={canDrag ? (e) => startOverlayDrag(e, overlay.id, 'image', getOverlayInitialXY(overlay)) : undefined}
+                  />
+
+                  {/* Delete button — visible on hover or when selected */}
+                  {canDrag && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.stopPropagation(); onDeleteImageOverlay?.(overlay.id); setSelectedCanvasItemId(null) }}
+                      title="Delete overlay"
+                      className={cx(
+                        'absolute -left-2 -top-2 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-red-500 text-white shadow-md transition-opacity',
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                      )}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+
+                  {/* Grip handle — drag to any timeline images layer */}
+                  {canDrag && (
+                    <div
+                      draggable
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onDragStart={(e) => {
+                        e.stopPropagation()
+                        const dur = Math.max(1, overlay.endSeconds - overlay.startSeconds)
+                        const payload = JSON.stringify({ id: overlay.id, label: overlay.label, durationSeconds: dur })
+                        e.dataTransfer.setData('application/watashi-image-overlay', payload)
+                        e.dataTransfer.setData('text/plain', payload)
+                        // Must match timeline's dropEffect = 'copy'
+                        e.dataTransfer.effectAllowed = 'copy'
+                      }}
+                      title="Drag to timeline layer"
+                      className={cx(
+                        'absolute -right-2 -top-2 flex h-5 w-5 cursor-grab items-center justify-center rounded bg-[var(--color-watashi-indigo)] text-white shadow-md transition-opacity active:cursor-grabbing',
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                      )}
+                    >
+                      <GripVertical className="h-3 w-3" />
+                    </div>
+                  )}
+                </div>
               )
             })}
 

@@ -235,6 +235,8 @@ export type TextOverlay = {
   endSeconds: number
   x?: number
   y?: number
+  /** false = staged in panel, not yet placed in the timeline */
+  placed?: boolean
 }
 
 export type ImageOverlay = {
@@ -248,6 +250,8 @@ export type ImageOverlay = {
   endSeconds: number
   x?: number
   y?: number
+  /** false = staged in panel, not yet placed in the timeline */
+  placed?: boolean
 }
 
 export type VideoEffects = {

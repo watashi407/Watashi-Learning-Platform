@@ -163,6 +163,52 @@ export function parseVideoAssetTransfer(rawPayload: string | null | undefined): 
   }
 }
 
+export type TextOverlayTransferPayload = {
+  id: string
+  label: string
+  durationSeconds: number
+}
+
+export type ImageOverlayTransferPayload = {
+  id: string
+  label: string
+  durationSeconds: number
+}
+
+export function parseTextOverlayTransfer(rawPayload: string | null | undefined): TextOverlayTransferPayload | null {
+  if (!rawPayload) return null
+  try {
+    const parsed = JSON.parse(rawPayload) as Record<string, unknown>
+    if (
+      typeof parsed.id !== 'string'
+      || typeof parsed.label !== 'string'
+      || typeof parsed.durationSeconds !== 'number'
+      || !Number.isFinite(parsed.durationSeconds)
+      || parsed.durationSeconds <= 0
+    ) return null
+    return { id: parsed.id, label: parsed.label, durationSeconds: parsed.durationSeconds }
+  } catch {
+    return null
+  }
+}
+
+export function parseImageOverlayTransfer(rawPayload: string | null | undefined): ImageOverlayTransferPayload | null {
+  if (!rawPayload) return null
+  try {
+    const parsed = JSON.parse(rawPayload) as Record<string, unknown>
+    if (
+      typeof parsed.id !== 'string'
+      || typeof parsed.label !== 'string'
+      || typeof parsed.durationSeconds !== 'number'
+      || !Number.isFinite(parsed.durationSeconds)
+      || parsed.durationSeconds <= 0
+    ) return null
+    return { id: parsed.id, label: parsed.label, durationSeconds: parsed.durationSeconds }
+  } catch {
+    return null
+  }
+}
+
 export function parseImageAssetTransfer(rawPayload: string | null | undefined): ImageAssetTransferPayload | null {
   if (!rawPayload) {
     return null

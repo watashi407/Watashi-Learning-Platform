@@ -120,7 +120,18 @@ export function VideoCreationPage() {
     minimumDurationSeconds: 30,
   })
 
-  // Merge extra text-layer clips into the canvas overlay list
+  // Only overlays that have been explicitly placed in the timeline
+  const placedTextOverlays = useMemo(
+    () => studio.textOverlays.filter((t) => t.placed !== false),
+    [studio.textOverlays],
+  )
+
+  const placedImageOverlays = useMemo(
+    () => studio.imageOverlays.filter((img) => img.placed !== false),
+    [studio.imageOverlays],
+  )
+
+  // Merge placed text overlays + extra text-layer clips into the canvas overlay list
   const allTextOverlays = useMemo<TextOverlay[]>(() => {
     const extraTextOverlays = extraLayers
       .filter((l) => l.type === 'text')
@@ -139,8 +150,8 @@ export function VideoCreationPage() {
           y: c.y,
         })),
       )
-    return [...studio.textOverlays, ...extraTextOverlays]
-  }, [studio.textOverlays, extraLayers])
+    return [...placedTextOverlays, ...extraTextOverlays]
+  }, [placedTextOverlays, extraLayers])
 
   const previewSourceUrl =
     studio.uploadedAsset?.proxyObjectUrl ??
@@ -465,6 +476,23 @@ export function VideoCreationPage() {
     }
   }
 
+  function handleRepositionTextOverlay(id: string, startSeconds: number, durationSeconds: number) {
+    const safeStart = Math.max(0, startSeconds)
+    if (studio.textOverlays.some((t) => t.id === id)) {
+      studio.updateTextOverlay(id, { startSeconds: safeStart, endSeconds: safeStart + durationSeconds, placed: true })
+      return
+    }
+    setExtraLayers((layers) => layers.map((l) => ({
+      ...l,
+      clips: l.clips.map((c) => c.id === id ? { ...c, startSeconds: safeStart, endSeconds: safeStart + durationSeconds } : c),
+    })))
+  }
+
+  function handleRepositionImageOverlay(id: string, startSeconds: number, durationSeconds: number) {
+    const safeStart = Math.max(0, startSeconds)
+    studio.updateImageOverlay(id, { startSeconds: safeStart, endSeconds: safeStart + durationSeconds, placed: true })
+  }
+
   function handleTextOverlayMove(id: string, x: number, y: number) {
     if (studio.textOverlays.some((t) => t.id === id)) {
       studio.updateTextOverlay(id, { x, y })
@@ -480,16 +508,30 @@ export function VideoCreationPage() {
     studio.updateImageOverlay(id, { x, y })
   }
 
+  function handleDeleteCanvasTextOverlay(id: string) {
+    if (studio.textOverlays.some((t) => t.id === id)) {
+      studio.removeTextOverlay(id)
+      return
+    }
+    setExtraLayers((layers) => layers.map((l) => ({ ...l, clips: l.clips.filter((c) => c.id !== id) })))
+  }
+
+  function handleDeleteCanvasImageOverlay(id: string) {
+    studio.removeImageOverlay(id)
+  }
+
   async function handleExport() {
     await studio.queueRenderWorkflow()
   }
 
   function handleAddText(overlay: TextOverlay) {
-    studio.addTextOverlay(overlay)
+    // Stage in panel only — user must drag to the timeline to place it
+    studio.addTextOverlay({ ...overlay, placed: false })
   }
 
   function handleAddImage(overlay: ImageOverlay) {
-    studio.addImageOverlay(overlay)
+    // Stage in panel only — user must drag to the timeline to place it
+    studio.addImageOverlay({ ...overlay, placed: false })
   }
 
   function handleBlockChange(
@@ -715,7 +757,7 @@ export function VideoCreationPage() {
             isPlaybackActive={isPreviewPlaying}
             effects={videoEffects}
             textOverlays={allTextOverlays}
-            imageOverlays={studio.imageOverlays}
+            imageOverlays={placedImageOverlays}
             subtitleCues={studio.subtitleCues}
             currentTime={currentTime}
             totalDuration={totalDuration}
@@ -725,6 +767,8 @@ export function VideoCreationPage() {
             videoRef={videoRef}
             onTextOverlayMove={handleTextOverlayMove}
             onImageOverlayMove={handleImageOverlayMove}
+            onDeleteTextOverlay={handleDeleteCanvasTextOverlay}
+            onDeleteImageOverlay={handleDeleteCanvasImageOverlay}
           />
         </div>
 
@@ -755,8 +799,8 @@ export function VideoCreationPage() {
           segments={studio.segments}
           videoTimelineClips={videoTimelineClips}
           subtitleCues={studio.subtitleCues}
-          textOverlays={studio.textOverlays}
-          imageOverlays={studio.imageOverlays}
+          textOverlays={placedTextOverlays}
+          imageOverlays={placedImageOverlays}
           audioTimelineClips={audioTimelineClips}
           extraLayers={extraLayers}
           onSeek={handleSeek}
@@ -769,6 +813,8 @@ export function VideoCreationPage() {
           onDropVideoAsset={handleDropVideoAsset}
           onDropAudioAsset={handleDropAudioAsset}
           onDropImageAsset={handleDropImageAsset}
+          onRepositionTextOverlay={handleRepositionTextOverlay}
+          onRepositionImageOverlay={handleRepositionImageOverlay}
           onRequestAddVideo={handleRequestAddVideo}
           onRequestAddAudio={handleRequestAddAudio}
           onAddText={handleAddTextLayer}

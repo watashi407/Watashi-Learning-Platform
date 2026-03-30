@@ -65,6 +65,7 @@ export const saveVideoProjectSchema = z.object({
       position: z.enum(['top', 'center', 'bottom']),
       startSeconds: z.number().min(0),
       endSeconds: z.number().min(0),
+      placed: z.boolean().optional(),
     }),
   ),
   imageOverlays: z.array(
@@ -77,6 +78,7 @@ export const saveVideoProjectSchema = z.object({
       opacity: z.number().min(0).max(1),
       startSeconds: z.number().min(0),
       endSeconds: z.number().min(0),
+      placed: z.boolean().optional(),
     }),
   ),
   videoEffects: z.object({
